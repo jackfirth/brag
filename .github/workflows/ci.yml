@@ -37,11 +37,11 @@ jobs:
         variant: ${{ matrix.racket-variant }}
 
     - name: Install packages
-      run: raco pkg install --auto ./br-parser-tools-lib
-      run: raco pkg install --auto ./br-parser-tools-doc
-      run: raco pkg install --auto ./br-parser-tools
-      run: raco pkg install --auto ./brag-lib
-      run: raco pkg install --auto ./brag
+      run: raco pkg install --auto ./yaragg-parser-tools-lib
+      run: raco pkg install --auto ./yaragg-parser-tools-doc
+      run: raco pkg install --auto ./yaragg-parser-tools
+      run: raco pkg install --auto ./yaragg-lib
+      run: raco pkg install --auto ./yaragg
 
-    - name: Run the br-parser-tools tests
-      run: xvfb-run raco test --drdr -p br-parser-tools-lib br-parser-tools-doc br-parser-tools brag-lib brag
+    - name: Run the yaragg-parser-tools tests
+      run: xvfb-run raco test --drdr -p yaragg-parser-tools-lib yaragg-parser-tools-doc yaragg-parser-tools yaragg-lib yaragg
