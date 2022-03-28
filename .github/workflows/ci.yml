@@ -37,11 +37,7 @@ jobs:
         variant: ${{ matrix.racket-variant }}
 
     - name: Install packages
-      run: raco pkg install --auto ./yaragg-parser-tools-lib
-      run: raco pkg install --auto ./yaragg-parser-tools-doc
-      run: raco pkg install --auto ./yaragg-parser-tools
-      run: raco pkg install --auto ./yaragg-lib
-      run: raco pkg install --auto ./yaragg
+      run: raco pkg install --auto ./yaragg-parser-tools-lib ./yaragg-parser-tools-doc ./yaragg-parser-tools ./yaragg-lib ./yaragg
 
     - name: Run the yaragg-parser-tools tests
       run: xvfb-run raco test --drdr -p yaragg-parser-tools-lib yaragg-parser-tools-doc yaragg-parser-tools yaragg-lib yaragg
