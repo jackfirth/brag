@@ -1,6 +1,6 @@
 #lang racket/base
 (require (for-syntax racket/base)
-         "../lex.rkt"
+         br-parser-tools/private-lex/lex
          rackunit)
 
 (define-syntax (catch-syn-error stx)

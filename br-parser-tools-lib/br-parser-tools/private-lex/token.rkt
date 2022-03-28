@@ -1,5 +1,5 @@
 #lang racket/base
-(require (for-syntax racket/base "token-syntax.rkt"))
+(require (for-syntax racket/base br-parser-tools/private-lex/token-syntax))
   
 ;; Defining tokens
   

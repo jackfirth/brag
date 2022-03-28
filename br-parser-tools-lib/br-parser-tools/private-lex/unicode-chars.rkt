@@ -1,5 +1,5 @@
 #lang racket/base
-(require racket/promise "util.rkt")
+(require racket/promise br-parser-tools/private-lex/util)
 
 (provide (all-defined-out))
 

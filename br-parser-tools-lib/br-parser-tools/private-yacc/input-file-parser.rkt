@@ -1,7 +1,7 @@
 #lang racket/base  
-(require "yacc-helper.rkt"
-         "../private-lex/token-syntax.rkt"
-         "grammar.rkt"
+(require br-parser-tools/private-yacc/yacc-helper
+         br-parser-tools/private-lex/token-syntax
+         br-parser-tools/private-yacc/grammar
          racket/class
          racket/contract
          (for-template racket/base))

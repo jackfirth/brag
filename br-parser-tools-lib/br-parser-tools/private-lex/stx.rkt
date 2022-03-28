@@ -1,5 +1,5 @@
 #lang racket/base
-(require "util.rkt" syntax/id-table racket/syntax)
+(require br-parser-tools/private-lex/util syntax/id-table racket/syntax)
 (provide parse)
   
 (define (bad-args stx num)

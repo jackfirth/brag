@@ -1,5 +1,5 @@
 #lang racket/base
-(require "grammar.rkt")
+(require br-parser-tools/private-yacc/grammar)
 (provide (except-out (all-defined-out) make-reduce make-reduce*)
          (rename-out [make-reduce* make-reduce]))
 

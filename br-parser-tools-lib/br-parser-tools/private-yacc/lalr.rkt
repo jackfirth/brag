@@ -1,6 +1,6 @@
 #lang racket/base
-(require "lr0.rkt"
-         "grammar.rkt"
+(require br-parser-tools/private-yacc/lr0
+         br-parser-tools/private-yacc/grammar
          racket/list
          racket/class)
 

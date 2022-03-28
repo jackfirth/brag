@@ -1,7 +1,7 @@
 #lang racket/base
-(require "input-file-parser.rkt"
-         "grammar.rkt"
-         "table.rkt"
+(require br-parser-tools/private-yacc/input-file-parser
+         br-parser-tools/private-yacc/grammar
+         br-parser-tools/private-yacc/table
          racket/class
          racket/contract)
 (require (for-template racket/base))
