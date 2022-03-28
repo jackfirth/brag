@@ -10,9 +10,7 @@
 
 
 (define deps '(["base" #:version "6.3"]
-               "compatibility-lib"
                "rackunit-lib"
-               "scheme-lib"
                "syntax-color-lib"))
 
 
