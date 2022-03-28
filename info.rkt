@@ -6,7 +6,7 @@
 
 (define scribblings
   '(("yaragg.scrbl" (multi-page) (parsing-library))
-    ("parser-tools.scrbl" (multi-page) (parsing-library))))
+    ("yaragg-parser-tools.scrbl" (multi-page) (parsing-library))))
 
 
 (define deps '(["base" #:version "6.3"]
