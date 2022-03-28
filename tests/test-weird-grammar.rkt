@@ -1,6 +1,6 @@
 #lang racket/base
 
-(require yaragg/test/weird-grammar
+(require yaragg/tests/weird-grammar
          rackunit)
 
 (check-equal? (syntax->datum (parse '("foo")))
