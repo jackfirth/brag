@@ -1,4 +1,4 @@
-#lang brag
+#lang yaragg
 
 ;; This used to fail when we had the yacc-based backend, but
 ;; cfg-parser seems to be ok with it.

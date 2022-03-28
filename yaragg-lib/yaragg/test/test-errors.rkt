@@ -36,7 +36,7 @@
 
 
 ;; errors with position are sensitive to length of lang line
-(define lang-line "#lang brag")
+(define lang-line "#lang yaragg")
                      
 (check-compile-error (format "~a" lang-line)
                      "The grammar does not appear to have any rules")
@@ -52,34 +52,34 @@
 
 
 
-(check-compile-error "#lang brag\n x: NUMBER\nx:STRING"
+(check-compile-error "#lang yaragg\n x: NUMBER\nx:STRING"
                      "Rule x has a duplicate definition")
 
 ;; Check to see that missing definitions for rules also raise good syntax
 ;; errors:
 
-(check-compile-error "#lang brag\nx:y"
+(check-compile-error "#lang yaragg\nx:y"
                      "Rule y has no definition")
 
-(check-compile-error "#lang brag\nnumber : 1flarbl"
+(check-compile-error "#lang yaragg\nnumber : 1flarbl"
                      "Rule 1flarbl has no definition")
 
 
 
 
-(check-compile-error "#lang brag\nprogram: EOF"
+(check-compile-error "#lang yaragg\nprogram: EOF"
                      "Token EOF is reserved and can not be used in a grammar")
 
 
 
 ;; Nontermination checks:
-(check-compile-error "#lang brag\nx : x"
+(check-compile-error "#lang yaragg\nx : x"
                      "Rule x has no finite derivation")
 
 
 
 (check-compile-error #<<EOF
-#lang brag
+#lang yaragg
 x : x y
 y : "y"
 EOF
@@ -90,7 +90,7 @@ EOF
 
 ; This should be illegal too:
 (check-compile-error #<<EOF
-#lang brag
+#lang yaragg
 a : "a" b
 b : a | b 
 EOF
@@ -100,7 +100,7 @@ EOF
 
 
 (check-compile-error #<<EOF
-#lang brag
+#lang yaragg
 a : [b]
 b : [c]
 c : c
@@ -109,7 +109,7 @@ EOF
 
 
 (check-compile-error #<<EOF
-#lang brag
+#lang yaragg
 a : [b]
 b : c
 c : c
@@ -118,7 +118,7 @@ EOF
 
 
 (check-compile-error #<<EOF
-#lang brag
+#lang yaragg
 a : [a]
 b : [b]
 c : c

@@ -1,3 +1,3 @@
-#lang brag
+#lang yaragg
 
 rule: "0"* "1"

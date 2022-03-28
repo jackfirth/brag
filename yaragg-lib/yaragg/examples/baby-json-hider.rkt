@@ -1,4 +1,4 @@
-#lang brag
+#lang yaragg
 #:prefix-out my:
 
 ;; Simple baby example of JSON structure

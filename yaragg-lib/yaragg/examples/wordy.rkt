@@ -1,4 +1,4 @@
-#lang brag
+#lang yaragg
 ;; A parser for a silly language
 sentence: verb optional-adjective object
 verb: greeting

@@ -1,4 +1,4 @@
-#lang brag
+#lang yaragg
 top : w | x | y | z | a | b | c
 w : /"w" ; atom
  x : /("x") ; seq

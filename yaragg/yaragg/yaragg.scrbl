@@ -3,7 +3,7 @@
           racket/date
           file/md5
           (for-label racket
-                     brag
+                     yaragg
                      yaragg/support
                      (only-in yaragg-parser-tools/lex lexer-src-pos)
                      (only-in syntax/parse syntax-parse ~literal)))
@@ -26,12 +26,12 @@
 
 
 
-@title{brag: a better Racket AST generator}
+@title{Yaragg: Yet Another Racket AST-Generator Generator}
 @author["Danny Yoo (95%)" "Matthew Butterick (5%)"]
 
 
 
-@defmodulelang[brag]
+@defmodulelang[yaragg]
 
 
 @margin-note{This is a fork of the @link["https://docs.racket-lang.org/ragg"]{@racket[ragg]} package. It has a variety of bugfixes and new features. Some of these features have required new notation that's not necessarily compatible with all existing @racket[ragg] files. 
@@ -77,11 +77,11 @@ This BNF description is also known as a @deftech{grammar}. Just as it does in a 
 
 Have we made progress?  We have a valid grammar. But we're still missing a @emph{parser}: a function that can use that description to make structures out of a sequence of tokens.
 
-Meanwhile, it's clear that we don't yet have a valid program because there's no @litchar{#lang} line. Let's add one: put @litchar{#lang brag} at the top of the grammar, and save it as a file called @filepath{nested-word-list.rkt}.
+Meanwhile, it's clear that we don't yet have a valid program because there's no @litchar{#lang} line. Let's add one: put @litchar{#lang yaragg} at the top of the grammar, and save it as a file called @filepath{nested-word-list.rkt}.
 
 @filebox["nested-word-list.rkt"]{
  @verbatim{
-  #lang brag
+  #lang yaragg
   nested-word-list: WORD
   | LEFT-PAREN nested-word-list* RIGHT-PAREN
 }}
@@ -151,7 +151,7 @@ to use:
 @itemize[
 
  @item{It provides a @litchar{#lang} for writing BNF grammars.
-  A module written in @litchar{#lang brag} automatically generates a
+  A module written in @litchar{#lang yaragg} automatically generates a
   parser. The grammar controls the structure of the syntax objects it generates.}
 
  @item{The language uses a few conventions to simplify the expression of
@@ -226,7 +226,7 @@ Here's a first pass at expressing the structure of these line-drawing programs.
 
 @filebox["simple-line-drawing.rkt"]{
  @verbatim|{
-  #lang brag
+  #lang yaragg
   drawing: rows*
   rows: repeat chunk+ ";"
   repeat: INTEGER
@@ -674,7 +674,7 @@ generates.
 
 @subsection[#:tag "brag-syntax"]{Syntax and terminology}
 A program in the @tt{brag} language consists of the language line
-@litchar{#lang brag}, followed by a collection of @tech{rule}s and
+@litchar{#lang yaragg}, followed by a collection of @tech{rule}s and
 possibly @tech{line comment}s or @tech{multiline comment}s.
 
 A @deftech{rule} is a sequence consisting of: a @tech{rule identifier}, a separator (either @litchar{":"} or @litchar{"::="}), and a @tech{pattern}.
@@ -726,7 +726,7 @@ A @deftech{pattern} is one of the following:
 For example, in the following program:
 @nested[#:style 'inset
         @verbatim|{
-         #lang brag
+         #lang yaragg
          ;; A parser for a silly language
          sentence: verb optional-adjective object
          verb: greeting
@@ -749,7 +749,7 @@ More examples:
   BNF for binary
   strings that contain an equal number of zeros and ones.
   @verbatim|{
-   #lang brag
+   #lang yaragg
    equal: [zero one | one zero]   ;; equal number of "0"s and "1"s.
    zero: "0" equal | equal "0"    ;; has an extra "0" in it.
    one: "1" equal | equal "1"     ;; has an extra "1" in it.
@@ -759,7 +759,7 @@ More examples:
  @item{A BNF for
   @link["http://www.json.org/"]{JSON}-like structures.
   @verbatim|{
-    #lang brag
+    #lang yaragg
     json: number | string
     | array  | object
     number: NUMBER
@@ -784,7 +784,7 @@ If the cut is applied to a right-hand pattern element, then that element is omit
 For instance, consider this simple grammar for arithmetic expressions:
 
 @verbatim|{
-#lang brag
+#lang yaragg
 expr : term ('+' term)*
 term : factor ('*' factor)*
 factor : ("0" | "1" | "2" | "3"
@@ -803,7 +803,7 @@ We get this parse tree:
 Suppose we felt the @litchar{+} and @litchar{*} characters were superfluous. We can add cuts to the grammar by prefixing these pattern elements with @litchar{/}:
 
 @verbatim|{
-#lang brag
+#lang yaragg
 expr : term (/'+' term)*
 term : factor (/'*' factor)*
 factor : ("0" | "1" | "2" | "3"
@@ -818,7 +818,7 @@ Our parse tree changes accordingly:
 Now suppose we apply a cut on the rule name, @racket[factor]:
 
 @verbatim|{
-#lang brag
+#lang yaragg
 expr : term (/'+' term)*
 term : factor (/'*' factor)*
 /factor : ("0" | "1" | "2" | "3"
@@ -839,7 +839,7 @@ If the splice is applied to a right-hand pattern element, that element is splice
 Suppose we remove the cut from the @racket[factor] rule name and instead splice the second appearance of @racket[factor] in the pattern for the @racket[term] rule:
 
 @verbatim|{
-#lang brag
+#lang yaragg
 expr : term (/'+' term)*
 term : factor (/'*' @factor)*
 factor : ("0" | "1" | "2" | "3"
@@ -854,7 +854,7 @@ The @racket[factor] elements matching the first position of the @racket[term] pa
 Finally, suppose we add a splice to the @racket[term] rule name:
 
 @verbatim|{
-#lang brag
+#lang yaragg
 expr : term (/'+' term)*
 @term : factor (/'*' @factor)*
 factor : ("0" | "1" | "2" | "3"
@@ -875,7 +875,7 @@ Caveat for the top-level rule: though the rule name can have a cut, it cannot ha
 @subsection{Syntax errors}
 
 Besides the basic syntax errors that can occur with a malformed grammar, there
-are a few other classes of situations that @litchar{#lang brag} will consider
+are a few other classes of situations that @litchar{#lang yaragg} will consider
 as syntax errors.
 
 @tt{brag} will raise a syntax error if the grammar:
@@ -888,7 +888,7 @@ as syntax errors.
   following program:
   @nested[#:style 'code-inset
           @verbatim|{
-             #lang brag
+             #lang yaragg
              foo: [bar]
              }|
           ]
@@ -904,7 +904,7 @@ as syntax errors.
   program:
   @nested[#:style 'code-inset
           @verbatim|{
-             #lang brag
+             #lang yaragg
              infinite-a: "a" infinite-a
              }|
           ]
@@ -918,7 +918,7 @@ grammars.
 
 @subsection{Semantics}
 
-A program written in @litchar{#lang brag} produces a module that provides a few
+A program written in @litchar{#lang yaragg} produces a module that provides a few
 bindings. The most important of these is @racket[parse]:
 
 @defproc[(parse [source-path any/c #f] 
@@ -994,7 +994,7 @@ Thus, it's only the presence of @tech{rule identifier}s in a rule's
  @filepath{simple-arithmetic-grammar.rkt}:
  @filebox["simple-arithmetic-grammar.rkt"]{
   @verbatim|{
-   #lang brag
+   #lang yaragg
    expr : term ('+' term)*
    term : factor ('*' factor)*
    factor : INT

@@ -1,4 +1,4 @@
-#lang brag
+#lang yaragg
 
 ## Statlist grammar
 

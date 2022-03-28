@@ -1,4 +1,4 @@
-#lang brag
+#lang yaragg
 
 top : xs | ys | zs
 xs : () | "x" xs

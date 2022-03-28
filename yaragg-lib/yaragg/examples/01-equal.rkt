@@ -1,4 +1,4 @@
-#lang brag
+#lang yaragg
 
 ## Equal numbers of 0 and 1s in a string.
 ##

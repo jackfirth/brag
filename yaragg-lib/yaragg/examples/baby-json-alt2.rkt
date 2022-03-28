@@ -1,4 +1,4 @@
-#lang brag
+#lang yaragg
 
 ;; Simple baby example of JSON structure
 json: number

@@ -1,3 +1,3 @@
-#lang brag
+#lang yaragg
 
 top : ("start" | "atok")+

@@ -1,2 +1,2 @@
-#lang brag
+#lang yaragg
 start: "a" "\"" "'" "\\" 'a' '"' '\'' '\\'

@@ -48,7 +48,7 @@
                      [TOKEN (datum->syntax rules-stx 'token)] ; for repl
                      [RULE-IDS (map syntax-e rule-ids)]
                      [RULES-STX rules-stx])
-         ;; this stx object represents the top level of a #lang brag module.
+         ;; this stx object represents the top level of a #lang yaragg module.
          ;; so any `define`s are automatically available at the repl.
          ;; and only identifiers explicitly `provide`d are visible on import.
          #'(#%module-begin             

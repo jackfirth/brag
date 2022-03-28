@@ -1,4 +1,4 @@
-#lang brag
+#lang yaragg
 start: (tab | space | newline | letter | return | all)*
 tab: '\t'
 space: " "

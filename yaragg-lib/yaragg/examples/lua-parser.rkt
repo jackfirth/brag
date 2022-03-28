@@ -1,4 +1,4 @@
-#lang brag
+#lang yaragg
 
 ;; Lua parser, adapted from:
 ;; http://www.lua.org/manual/5.1/manual.html#8

@@ -1,4 +1,4 @@
-#lang brag
+#lang yaragg
 start: A c def hello-world
 A : "\"\101\\" ; A
 c : '\'\U0063\\' ; c

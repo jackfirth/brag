@@ -1,4 +1,4 @@
-#lang brag
+#lang yaragg
 ;; test the curly quantifier
 start : a-rule | b-rule | c-rule | d-rule | e-rule
 a-rule : "a"{2} ; exactly 2
