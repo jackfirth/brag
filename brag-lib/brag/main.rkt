@@ -1,8 +1,8 @@
 #lang racket/base
 
 (module reader racket/base
-  (require "codegen/reader.rkt")
-  (provide (all-from-out "codegen/reader.rkt")))
+  (require brag/codegen/reader)
+  (provide (all-from-out brag/codegen/reader)))
 
 ;; this creates dummy identifiers
 ;; so cross-refs in `brag` docs will work

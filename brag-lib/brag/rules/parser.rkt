@@ -3,7 +3,7 @@
          br-parser-tools/lex
          racket/list
          racket/match
-         "rule-structs.rkt")
+         brag/rules/rule-structs)
 
 ;; A parser for grammars.
 

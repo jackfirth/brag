@@ -1,9 +1,9 @@
 #lang racket/base
 (require (for-syntax racket/base
                      racket/list
-                     "codegen.rkt"
-                     "runtime.rkt"
-                     "flatten.rkt")
+                     brag/codegen/codegen
+                     brag/codegen/runtime
+                     brag/codegen/flatten)
          br-parser-tools/lex
          br-parser-tools/cfg-parser
          (prefix-in bs: brag/support)

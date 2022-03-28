@@ -1,6 +1,6 @@
 #lang racket/base
 
-(require "rule-structs.rkt"
+(require brag/rules/rule-structs
          br-parser-tools/lex
          racket/match
          syntax/strip-context)

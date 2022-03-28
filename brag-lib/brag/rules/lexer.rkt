@@ -1,9 +1,9 @@
 #lang racket/base
-(require (for-syntax racket/base "parser.rkt"))
+(require (for-syntax racket/base brag/rules/parser))
 (require br-parser-tools/lex
          (prefix-in : br-parser-tools/lex-sre)
-         "parser.rkt"
-         "rule-structs.rkt"
+         brag/rules/parser
+         brag/rules/rule-structs
          (only-in brag/support from/to)
          racket/string
          syntax-color/racket-lexer

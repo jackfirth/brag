@@ -3,7 +3,7 @@
          racket/syntax
          brag/rules/stx-types
          syntax/id-table
-         (prefix-in sat: "satisfaction.rkt")
+         (prefix-in sat: brag/codegen/satisfaction)
          (for-template racket/base
                        brag/codegen/runtime
                        brag/private/internal-support))
