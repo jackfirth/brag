@@ -1,0 +1,12 @@
+#lang racket/base
+
+(module+ test
+
+  (require yaragg/examples/hide-and-splice
+           yaragg/support
+           rackunit)
+
+  ;; check that an id with both a splice and hide is handled correctly
+
+  (check-equal? (parse-to-datum "xxx") '(top ("x" "x" "x")))
+  (check-equal? (parse-to-datum "yyy") '(top "y" "y" "y")))
