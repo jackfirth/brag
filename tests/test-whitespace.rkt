@@ -1,16 +1,19 @@
 #lang racket/base
-(require yaragg/examples/whitespace
-         yaragg/support
-         rackunit)
 
-(check-equal?
- (parse-to-datum "\ty\n x\tz\r")
- '(start (tab "\t") (letter "y") (newline "\n") (space " ") (letter "x") (tab "\t") (letter "z") (return "\r")))
+(module+ test
 
-(check-equal?
- (parse-to-datum "\t\n \t\r")
- '(start (tab "\t") (newline "\n") (space " ") (tab "\t") (return "\r")))
+  (require yaragg/examples/whitespace
+           yaragg/support
+           rackunit)
 
-(check-equal?
- (parse-to-datum "\a\b\t\n\v\f\r\e")
- '(start (all "\a" "\b" "\t" "\n" "\v" "\f" "\r" "\e")))
+  (check-equal?
+   (parse-to-datum "\ty\n x\tz\r")
+   '(start (tab "\t") (letter "y") (newline "\n") (space " ") (letter "x") (tab "\t") (letter "z") (return "\r")))
+
+  (check-equal?
+   (parse-to-datum "\t\n \t\r")
+   '(start (tab "\t") (newline "\n") (space " ") (tab "\t") (return "\r")))
+
+  (check-equal?
+   (parse-to-datum "\a\b\t\n\v\f\r\e")
+   '(start (all "\a" "\b" "\t" "\n" "\v" "\f" "\r" "\e"))))

@@ -1,14 +1,13 @@
 #lang racket/base
 
-(require yaragg/examples/start-and-atok
-         yaragg/support
-         rackunit)
+(module+ test
 
-;; make sure that "start" and "atok" work as terminals.
+  (require yaragg/examples/start-and-atok
+           yaragg/support
+           rackunit)
 
-(check-equal? (parse-to-datum (list "start")) '(top "start"))
-(check-equal? (parse-to-datum (list "atok")) '(top "atok"))
-(check-equal? (parse-to-datum (list "start" "atok")) '(top "start" "atok"))
+  ;; make sure that "start" and "atok" work as terminals.
 
-
-
+  (check-equal? (parse-to-datum (list "start")) '(top "start"))
+  (check-equal? (parse-to-datum (list "atok")) '(top "atok"))
+  (check-equal? (parse-to-datum (list "start" "atok")) '(top "start" "atok")))
