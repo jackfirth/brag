@@ -10,12 +10,12 @@
 
 
 (define deps '(["base" #:version "6.3"]
-               "rackunit-lib"
                "syntax-color-lib"))
 
 
 (define build-deps '("at-exp-lib"
                      "racket-doc"
+                     "rackunit-lib"
                      "scribble-lib"
                      "syntax-color-doc"))
 
