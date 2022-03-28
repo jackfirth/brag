@@ -1,7 +1,7 @@
 #lang scribble/doc
-@(require scribble/manual scribble/struct scribble/xref scribble/bnf
-          (for-label scheme/base
-                     scheme/contract
+@(require scribble/manual
+          (for-label racket/base
+                     racket/contract
                      yaragg/parser-tools/lex
                      (prefix-in : yaragg/parser-tools/lex-sre)
                      yaragg/parser-tools/yacc
