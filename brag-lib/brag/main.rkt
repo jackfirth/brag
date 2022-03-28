@@ -1,6 +1,6 @@
 #lang racket/base
 
-(module+ reader
+(module reader racket/base
   (require "codegen/reader.rkt")
   (provide (all-from-out "codegen/reader.rkt")))
 
