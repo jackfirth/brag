@@ -42,13 +42,13 @@
                      "The grammar does not appear to have any rules")
 
 (check-compile-error (format "~a\nfoo" lang-line)
-                     "Error while parsing grammar near: foo [line=2, column=0, position=12]")
+                     "Error while parsing grammar near: foo [line=2, column=0, position=14]")
 
 (check-compile-error (format "~a\nnumber : 42" lang-line)
-                     "Error while parsing grammar near: 42 [line=2, column=9, position=21]")
+                     "Error while parsing grammar near: 42 [line=2, column=9, position=23]")
 
 (check-compile-error (format "~a\nnumber : 1" lang-line)
-                     "Error while parsing grammar near: 1 [line=2, column=9, position=21]")
+                     "Error while parsing grammar near: 1 [line=2, column=9, position=23]")
 
 
 
