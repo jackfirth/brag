@@ -1,6 +1,6 @@
 #lang racket/base
 (require (prefix-in rl: racket/list)
-         yaragg-parser-tools/private-lex/token-syntax)
+         yaragg/parser-tools/private-lex/token-syntax)
 
 ;; General helper routines
 (provide duplicate-list? remove-duplicates overlap? vector-andmap display-yacc)

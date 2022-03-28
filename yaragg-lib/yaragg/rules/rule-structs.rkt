@@ -2,7 +2,7 @@
 (provide (all-defined-out))
 
 
-;; We keep our own position structure because yaragg-parser-tools/lex's position
+;; We keep our own position structure because yaragg/parser-tools/lex's position
 ;; structure is non-transparent, hence highly resistant to unit testing.
 (struct pos (offset line col)
         #:transparent)

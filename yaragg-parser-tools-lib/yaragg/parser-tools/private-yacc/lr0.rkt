@@ -1,6 +1,6 @@
 #lang racket/base  
-(require yaragg-parser-tools/private-yacc/grammar
-         yaragg-parser-tools/private-yacc/graph
+(require yaragg/parser-tools/private-yacc/grammar
+         yaragg/parser-tools/private-yacc/graph
          racket/list
          racket/class)
 

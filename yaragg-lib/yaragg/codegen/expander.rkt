@@ -4,8 +4,8 @@
                      yaragg/codegen/codegen
                      yaragg/codegen/runtime
                      yaragg/codegen/flatten)
-         yaragg-parser-tools/lex
-         yaragg-parser-tools/cfg-parser
+         yaragg/parser-tools/lex
+         yaragg/parser-tools/cfg-parser
          (prefix-in bs: yaragg/support)
          racket/set)
 

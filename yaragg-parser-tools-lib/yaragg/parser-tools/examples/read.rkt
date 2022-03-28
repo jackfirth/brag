@@ -4,9 +4,9 @@
 ;; list of syntax objects, instead of returning one syntax object at a time
   
 (require (for-syntax racket/base)
-         yaragg-parser-tools/lex
-         (prefix-in : yaragg-parser-tools/lex-sre)
-         yaragg-parser-tools/yacc
+         yaragg/parser-tools/lex
+         (prefix-in : yaragg/parser-tools/lex-sre)
+         yaragg/parser-tools/yacc
          syntax/readerr)
   
 (define-tokens data (DATUM))

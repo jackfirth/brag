@@ -4,7 +4,7 @@
 
 ;; A simple lexer for simple-line-drawing.
 (require yaragg/support
-         yaragg-parser-tools/lex)
+         yaragg/parser-tools/lex)
 
 (define (tokenize ip)
   (port-count-lines! ip)

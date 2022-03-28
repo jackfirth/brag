@@ -2,7 +2,7 @@
 (require racket/match 
          racket/list
          racket/generator
-         (prefix-in lex: yaragg-parser-tools/lex) 
+         (prefix-in lex: yaragg/parser-tools/lex) 
          yaragg/support
          yaragg/private/internal-support)
 

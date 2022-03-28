@@ -3,8 +3,8 @@
 (require yaragg/examples/simple-line-drawing
          yaragg/support
          racket/list
-         yaragg-parser-tools/lex
-         (prefix-in : yaragg-parser-tools/lex-sre)
+         yaragg/parser-tools/lex
+         (prefix-in : yaragg/parser-tools/lex-sre)
          rackunit)
 
 (define (make-tokenizer ip)
@@ -68,5 +68,5 @@ EOF
 ;; FIXME: add tests to make sure location is as we expect.
 ;;
 ;; FIXME: handle the EOF issue better.  Something in cfg-parser
-;; appears to deviate from yaragg-parser-tools/yacc with regards to the stop
+;; appears to deviate from yaragg/parser-tools/yacc with regards to the stop
 ;; token.

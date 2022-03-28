@@ -1,5 +1,5 @@
 #lang racket/base
-(require (for-syntax racket/base yaragg-parser-tools/private-lex/token-syntax))
+(require (for-syntax racket/base yaragg/parser-tools/private-lex/token-syntax))
   
 ;; Defining tokens
   

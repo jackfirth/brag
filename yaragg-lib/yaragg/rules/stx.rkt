@@ -1,7 +1,7 @@
 #lang racket/base
 
 (require yaragg/rules/rule-structs
-         yaragg-parser-tools/lex
+         yaragg/parser-tools/lex
          racket/match
          syntax/strip-context)
 

@@ -1,7 +1,7 @@
 #lang racket/base  
-(require yaragg-parser-tools/private-yacc/yacc-helper
-         yaragg-parser-tools/private-lex/token-syntax
-         yaragg-parser-tools/private-yacc/grammar
+(require yaragg/parser-tools/private-yacc/yacc-helper
+         yaragg/parser-tools/private-lex/token-syntax
+         yaragg/parser-tools/private-yacc/grammar
          racket/class
          racket/contract
          (for-template racket/base))

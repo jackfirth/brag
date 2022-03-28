@@ -1,6 +1,6 @@
 #lang racket/base
-(require yaragg-parser-tools/yacc
-         yaragg-parser-tools/lex
+(require yaragg/parser-tools/yacc
+         yaragg/parser-tools/lex
          racket/list
          racket/match
          yaragg/rules/rule-structs)
@@ -265,7 +265,7 @@
 
 
 ;; position->pos: position -> pos
-;; Coerses position structures from yaragg-parser-tools/lex to our own pos structures.
+;; Coerses position structures from yaragg/parser-tools/lex to our own pos structures.
 (define (position->pos a-pos)
   (pos (position-offset a-pos)
        (position-line a-pos)

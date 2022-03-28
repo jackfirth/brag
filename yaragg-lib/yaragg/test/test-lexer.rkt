@@ -1,7 +1,7 @@
 #lang racket/base
 (require yaragg/rules/lexer
          rackunit
-         yaragg-parser-tools/lex)
+         yaragg/parser-tools/lex)
 
 (define (l s)
   (define t (lex/1 (open-input-string s)))

@@ -1,11 +1,11 @@
 #lang racket/base
-(require yaragg-parser-tools/lex
+(require yaragg/parser-tools/lex
          racket/string
          racket/struct
-         (prefix-in : yaragg-parser-tools/lex-sre)
+         (prefix-in : yaragg/parser-tools/lex-sre)
          (for-syntax racket/base))
-(provide (all-from-out yaragg-parser-tools/lex)
-         (all-from-out yaragg-parser-tools/lex-sre)
+(provide (all-from-out yaragg/parser-tools/lex)
+         (all-from-out yaragg/parser-tools/lex-sre)
          [struct-out token-struct]
          token
          [struct-out exn:fail:parsing])

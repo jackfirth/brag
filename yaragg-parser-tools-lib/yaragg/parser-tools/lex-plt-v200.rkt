@@ -1,7 +1,7 @@
 #lang racket/base
 (require (for-syntax racket/base)
-         yaragg-parser-tools/lex
-         (prefix-in : yaragg-parser-tools/lex-sre))
+         yaragg/parser-tools/lex
+         (prefix-in : yaragg/parser-tools/lex-sre))
   
 (provide epsilon ~
          (rename-out [:* *]

@@ -4,9 +4,9 @@
 
 
 ;; Import the parser and lexer generators.
-(require yaragg-parser-tools/yacc
-         yaragg-parser-tools/lex
-         (prefix-in : yaragg-parser-tools/lex-sre))
+(require yaragg/parser-tools/yacc
+         yaragg/parser-tools/lex
+         (prefix-in : yaragg/parser-tools/lex-sre))
 
 (define-tokens value-tokens (NUM VAR FNCT))
 (define-empty-tokens op-tokens (newline = OP CP + - * / ^ EOF NEG))

@@ -2,7 +2,7 @@
 (require yaragg/examples/simple-arithmetic-grammar
          yaragg/support
          racket/set
-         yaragg-parser-tools/lex
+         yaragg/parser-tools/lex
          racket/list
          rackunit)
 

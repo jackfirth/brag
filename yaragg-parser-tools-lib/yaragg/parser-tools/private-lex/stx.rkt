@@ -1,5 +1,5 @@
 #lang racket/base
-(require yaragg-parser-tools/private-lex/util syntax/id-table racket/syntax)
+(require yaragg/parser-tools/private-lex/util syntax/id-table racket/syntax)
 (provide parse)
   
 (define (bad-args stx num)

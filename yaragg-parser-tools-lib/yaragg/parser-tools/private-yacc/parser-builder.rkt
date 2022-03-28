@@ -1,7 +1,7 @@
 #lang racket/base
-(require yaragg-parser-tools/private-yacc/input-file-parser
-         yaragg-parser-tools/private-yacc/grammar
-         yaragg-parser-tools/private-yacc/table
+(require yaragg/parser-tools/private-yacc/input-file-parser
+         yaragg/parser-tools/private-yacc/grammar
+         yaragg/parser-tools/private-yacc/table
          racket/class
          racket/contract)
 (require (for-template racket/base))

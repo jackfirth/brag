@@ -1,6 +1,6 @@
 #lang racket/base
 (require (for-syntax racket/base)
-         yaragg-parser-tools/lex)
+         yaragg/parser-tools/lex)
     
 (provide (rename-out [sre-* *]
                      [sre-+ +]

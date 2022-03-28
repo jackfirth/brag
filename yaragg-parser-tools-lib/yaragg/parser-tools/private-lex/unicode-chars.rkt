@@ -1,5 +1,5 @@
 #lang racket/base
-(require racket/promise yaragg-parser-tools/private-lex/util)
+(require racket/promise yaragg/parser-tools/private-lex/util)
 
 (provide (all-defined-out))
 

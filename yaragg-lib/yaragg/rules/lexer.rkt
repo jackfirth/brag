@@ -1,7 +1,7 @@
 #lang racket/base
 (require (for-syntax racket/base yaragg/rules/parser))
-(require yaragg-parser-tools/lex
-         (prefix-in : yaragg-parser-tools/lex-sre)
+(require yaragg/parser-tools/lex
+         (prefix-in : yaragg/parser-tools/lex-sre)
          yaragg/rules/parser
          yaragg/rules/rule-structs
          (only-in yaragg/support from/to)
@@ -163,7 +163,7 @@
     (values "" end-pos)]))
 
 ;; position->pos: position -> pos
-;; Converts position structures from yaragg-parser-tools/lex to our own pos structures.
+;; Converts position structures from yaragg/parser-tools/lex to our own pos structures.
 (define (position->pos a-pos)
   (pos (position-offset a-pos)
        (position-line a-pos)

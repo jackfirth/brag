@@ -1,7 +1,7 @@
 #lang racket/base
-(require yaragg-parser-tools/lex
-         (prefix-in : yaragg-parser-tools/lex-sre)
-         yaragg-parser-tools/yacc
+(require yaragg/parser-tools/lex
+         (prefix-in : yaragg/parser-tools/lex-sre)
+         yaragg/parser-tools/yacc
          syntax/readerr
          racket/list)
 (provide trans)

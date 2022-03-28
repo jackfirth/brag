@@ -2,7 +2,7 @@
 
 
 (require rackunit
-         yaragg-parser-tools/lex
+         yaragg/parser-tools/lex
          yaragg/rules/parser
          yaragg/rules/lexer
          yaragg/rules/rule-structs)

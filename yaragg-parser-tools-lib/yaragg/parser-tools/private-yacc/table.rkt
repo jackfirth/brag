@@ -1,8 +1,8 @@
 #lang racket/base
-(require yaragg-parser-tools/private-yacc/grammar
-         yaragg-parser-tools/private-yacc/lr0
-         yaragg-parser-tools/private-yacc/lalr
-         yaragg-parser-tools/private-yacc/parser-actions
+(require yaragg/parser-tools/private-yacc/grammar
+         yaragg/parser-tools/private-yacc/lr0
+         yaragg/parser-tools/private-yacc/lalr
+         yaragg/parser-tools/private-yacc/parser-actions
          racket/contract
          racket/list
          racket/class)

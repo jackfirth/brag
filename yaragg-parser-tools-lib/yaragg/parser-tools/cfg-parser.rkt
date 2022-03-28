@@ -31,12 +31,12 @@
 
 
 
-(require yaragg-parser-tools/yacc
-         yaragg-parser-tools/lex)
+(require yaragg/parser-tools/yacc
+         yaragg/parser-tools/lex)
 
 (require (for-syntax racket/base
                      syntax/boundmap
-                     yaragg-parser-tools/private-lex/token-syntax))
+                     yaragg/parser-tools/private-lex/token-syntax))
 
 (provide cfg-parser)
 
@@ -752,7 +752,7 @@
 
 (module* test racket/base
   (require (submod "..")
-           yaragg-parser-tools/lex
+           yaragg/parser-tools/lex
            racket/block
            rackunit)
 
