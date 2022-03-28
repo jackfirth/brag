@@ -27,17 +27,11 @@ jobs:
           - {racket-version: "7.3",    racket-variant: "CS"}
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@master
-
+    - uses: actions/checkout@master
     - uses: Bogdanp/setup-racket@v1.7
       with:
         distribution: 'full'
         version: ${{ matrix.racket-version }}
         variant: ${{ matrix.racket-variant }}
-
-    - name: Install packages
-      run: raco pkg install --auto ./yaragg-parser-tools-lib ./yaragg-parser-tools-doc ./yaragg-parser-tools ./yaragg-lib ./yaragg
-
-    - name: Run the yaragg-parser-tools tests
-      run: xvfb-run raco test --drdr -p yaragg-parser-tools-lib yaragg-parser-tools-doc yaragg-parser-tools yaragg-lib yaragg
+    - run: raco pkg install --batch --auto --link --name yaragg
+    - run: xvfb-run raco test --drdr --package yaragg
