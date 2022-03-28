@@ -1,6 +1,6 @@
 #lang racket/base
 (require (for-syntax racket/base)
-         yaragg-parser-tools/private-lex/lex
+         yaragg-parser-tools/lex
          rackunit)
 
 (define-syntax (catch-syn-error stx)
