@@ -15,7 +15,7 @@
 ;; A token is either
 ;; - symbol
 ;; - (token symbol any)
-(struct token (name value) #:inspector (make-inspector))
+(struct token (name value) #:transparent)
 
 ;; token-name*: token -> symbol
 (define (token-name* t)

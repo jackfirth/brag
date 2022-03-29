@@ -12,12 +12,12 @@
 ;; A reduce contains a runtime-reduce so that sharing of the reduces can
 ;; be easily transferred to sharing of runtime-reduces.
   
-(struct action () #:inspector (make-inspector))
-(struct shift action (state) #:inspector (make-inspector))
-(struct reduce action (prod runtime-reduce) #:inspector (make-inspector))
-(struct accept action () #:inspector (make-inspector))
-(struct goto action (state) #:inspector (make-inspector))
-(struct no-action action () #:inspector (make-inspector))
+(struct action () #:transparent)
+(struct shift action (state) #:transparent)
+(struct reduce action (prod runtime-reduce) #:transparent)
+(struct accept action () #:transparent)
+(struct goto action (state) #:transparent)
+(struct no-action action () #:transparent)
   
 (define (reduce* p)
   (reduce p

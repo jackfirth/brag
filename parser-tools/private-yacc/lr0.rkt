@@ -14,8 +14,8 @@
 ;;   be used to compare kernels
 ;;   Each kernel is assigned a unique index, 0 <= index < number of states
 ;; trans-key = (trans-key kernel gram-sym)
-(struct kernel (items index) #:inspector (make-inspector))
-(struct trans-key (st gs) #:inspector (make-inspector))
+(struct kernel (items index) #:transparent)
+(struct trans-key (st gs) #:transparent)
 
 (define (trans-key<? a b)
   (define kia (kernel-index (trans-key-st a)))
@@ -290,7 +290,7 @@
        (enq! new-kernels (goto (car old-kernels)))
        (loop (cdr old-kernels) (cons (car old-kernels) seen-kernels))])))
 
-(struct q (f l) #:inspector (make-inspector) #:mutable)
+(struct q (f l) #:mutable)
 (define (empty-queue? q) (null? (q-f q)))
 (define (make-queue) (q null null))
 

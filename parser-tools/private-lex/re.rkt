@@ -25,15 +25,15 @@
 ;;
 ;; Every re must have an index field globally different from all
 ;; other re index fields.
-(struct re (nullable? index) #:inspector (make-inspector))
-(struct epsilonR re () #:inspector (make-inspector))
-(struct zeroR re () #:inspector (make-inspector))
-(struct char-setR re (chars) #:inspector (make-inspector))
-(struct concatR re (re1 re2) #:inspector (make-inspector))
-(struct repeatR re (low high re) #:inspector (make-inspector))
-(struct orR re (res) #:inspector (make-inspector))
-(struct andR re (res) #:inspector (make-inspector))
-(struct negR re (re) #:inspector (make-inspector))
+(struct re (nullable? index) #:transparent)
+(struct epsilonR re () #:transparent)
+(struct zeroR re () #:transparent)
+(struct char-setR re (chars) #:transparent)
+(struct concatR re (re1 re2) #:transparent)
+(struct repeatR re (low high re) #:transparent)
+(struct orR re (res) #:transparent)
+(struct andR re (res) #:transparent)
+(struct negR re (re) #:transparent)
 
 ;; e : re
 ;; The unique epsilon re

@@ -205,7 +205,7 @@
 (define (extract-no-src-pos ip)
   (extract-helper ip #f #f))
   
-(struct stack-frame (state value start-pos end-pos) #:inspector (make-inspector))
+(struct stack-frame (state value start-pos end-pos) #:transparent)
   
 (define (make-empty-stack i) (list (stack-frame i #f #f #f)))
   

@@ -7,21 +7,21 @@
          racket/contract)
   
 ;; Each production has a unique index 0 <= index <= number of productions
-(struct prod (lhs rhs index prec action) #:inspector (make-inspector) #:mutable)
+(struct prod (lhs rhs index prec action) #:mutable)
 
 ;; The dot-pos field is the index of the element in the rhs
 ;; of prod that the dot immediately precedes.
 ;; Thus 0 <= dot-pos <= (vector-length rhs).
-(struct item (prod dot-pos) #:inspector (make-inspector))
+(struct item (prod dot-pos) #:transparent)
   
 ;; gram-sym = (union term? non-term?)
 ;; Each term has a unique index 0 <= index < number of terms
 ;; Each non-term has a unique index 0 <= index < number of non-terms  
-(struct term (sym index prec) #:inspector (make-inspector) #:mutable)
-(struct non-term (sym index) #:inspector (make-inspector) #:mutable)
+(struct term (sym index prec) #:mutable)
+(struct non-term (sym index) #:mutable)
 
 ;; a precedence declaration.
-(struct prec (num assoc) #:inspector (make-inspector))
+(struct prec (num assoc) #:transparent)
   
 (provide/contract
  [item (prod? (or/c #f natural-number/c) . -> . item?)]

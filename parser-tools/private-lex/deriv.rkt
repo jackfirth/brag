@@ -218,7 +218,7 @@
 ;;                    (list-of (cons int (list-of (cons char-set int)))))
 ;; Each transitions is a state and a list of chars with the state to transition to.
 ;; The finals and transitions are sorted by state number, and duplicate free.
-(struct dfa (num-states start-state final-states/actions transitions) #:inspector (make-inspector))
+(struct dfa (num-states start-state final-states/actions transitions) #:transparent)
   
 (define loc:get-integer is:get-integer)
   
