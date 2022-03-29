@@ -6,7 +6,6 @@
          yaragg/rules/rule-structs
          (only-in yaragg/support from/to)
          racket/string
-         syntax-color/racket-lexer
          racket/match)
 
 (provide lex/1 tokenize)

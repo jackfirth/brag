@@ -2,12 +2,11 @@
 (require racket/base
          racket/match
          (prefix-in is: data/integer-set)
-         racket/list
          syntax/stx
-         "util.rkt"
-         "stx.rkt"
-         "re.rkt"
-         "deriv.rkt")
+         yaragg/parser-tools/private-lex/util
+         yaragg/parser-tools/private-lex/stx
+         yaragg/parser-tools/private-lex/re
+         yaragg/parser-tools/private-lex/deriv)
   
 (provide build-lexer)
   

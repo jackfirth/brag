@@ -63,7 +63,6 @@
         (let ((BIND void) ... (TMP void) ...)
           (void BOUND ... ... TERM-GROUP ... START ... END ... PREC ...)))))
 
-(require racket/list "parser-actions.rkt")
 
 (define (build-parser filename src-pos suppress input-terms start end assocs prods)
   (define grammar (parse-input input-terms start end assocs prods src-pos))

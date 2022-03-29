@@ -1,9 +1,7 @@
 #lang racket/base
 
 (require yaragg/rules/rule-structs
-         yaragg/parser-tools/lex
-         racket/match
-         syntax/strip-context)
+         racket/match)
 
 (provide rule->stx)
 

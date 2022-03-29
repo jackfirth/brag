@@ -2,8 +2,7 @@
 (require yaragg/parser-tools/lex
          (prefix-in : yaragg/parser-tools/lex-sre)
          yaragg/parser-tools/yacc
-         syntax/readerr
-         racket/list)
+         syntax/readerr)
 (provide trans)
   
 (define match-double-string

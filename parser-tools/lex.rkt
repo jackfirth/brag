@@ -3,21 +3,19 @@
 ;; Provides the syntax used to create lexers and the functions needed to
 ;; create and use the buffer that the lexer reads from.  See docs.
 
-(require (for-syntax racket/list
-                     racket/syntax
+(require (for-syntax racket/syntax
                      syntax/stx
                      syntax/define
-                     syntax/boundmap
-                     "private-lex/util.rkt"
-                     "private-lex/actions.rkt"
-                     "private-lex/front.rkt"
-                     "private-lex/unicode-chars.rkt"
+                     yaragg/parser-tools/private-lex/util
+                     yaragg/parser-tools/private-lex/actions
+                     yaragg/parser-tools/private-lex/front
+                     yaragg/parser-tools/private-lex/unicode-chars
                      racket/base
                      racket/promise))
 
 (require racket/stxparam
          syntax/readerr
-         "private-lex/token.rkt")
+         yaragg/parser-tools/private-lex/token)
 
 (provide lexer lexer-src-pos lexer-srcloc define-lex-abbrev define-lex-abbrevs define-lex-trans
            

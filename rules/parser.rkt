@@ -1,7 +1,6 @@
 #lang racket/base
 (require yaragg/parser-tools/yacc
          yaragg/parser-tools/lex
-         racket/list
          racket/match
          yaragg/rules/rule-structs)
 

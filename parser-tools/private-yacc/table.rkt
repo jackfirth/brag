@@ -4,7 +4,6 @@
          yaragg/parser-tools/private-yacc/lalr
          yaragg/parser-tools/private-yacc/parser-actions
          racket/contract
-         racket/list
          racket/class)
 
 ;; Routine to build the LALR table

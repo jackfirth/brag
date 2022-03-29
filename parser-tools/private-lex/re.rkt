@@ -1,8 +1,7 @@
 #lang racket/base
-(require racket/list
-         racket/match
+(require racket/match
          (prefix-in is: data/integer-set)
-         "util.rkt")
+         yaragg/parser-tools/private-lex/util)
   
 (provide ->re build-epsilon build-zero build-char-set build-concat
          build-repeat build-or build-and build-neg

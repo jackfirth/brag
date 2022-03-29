@@ -3,8 +3,7 @@
 ;; representation of the input to the parser generator.
   
 (require racket/class
-         (except-in racket/list remove-duplicates)
-         "yacc-helper.rkt"
+         yaragg/parser-tools/private-yacc/yacc-helper
          racket/contract)
   
 ;; Each production has a unique index 0 <= index <= number of productions

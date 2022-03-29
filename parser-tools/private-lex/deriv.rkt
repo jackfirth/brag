@@ -1,8 +1,7 @@
 #lang racket/base
-(require racket/list
-         (prefix-in is: data/integer-set)
-         "re.rkt"
-         "util.rkt")
+(require (prefix-in is: data/integer-set)
+         yaragg/parser-tools/private-lex/re
+         yaragg/parser-tools/private-lex/util)
 
 (provide build-dfa print-dfa (struct-out dfa))
 

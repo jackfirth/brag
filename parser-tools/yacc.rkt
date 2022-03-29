@@ -1,11 +1,11 @@
 #lang racket/base
 (require (for-syntax racket/base
-                     "private-yacc/parser-builder.rkt"
-                     "private-yacc/grammar.rkt"
-                     "private-yacc/yacc-helper.rkt"
-                     "private-yacc/parser-actions.rkt")
-         "private-lex/token.rkt"
-         "private-yacc/parser-actions.rkt"
+                     yaragg/parser-tools/private-yacc/parser-builder
+                     yaragg/parser-tools/private-yacc/grammar
+                     yaragg/parser-tools/private-yacc/yacc-helper
+                     yaragg/parser-tools/private-yacc/parser-actions)
+         yaragg/parser-tools/private-lex/token
+         yaragg/parser-tools/private-yacc/parser-actions
          racket/local
          racket/pretty
          syntax/readerr)
