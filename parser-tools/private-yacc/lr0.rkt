@@ -9,13 +9,13 @@
          (struct-out trans-key) trans-key-list-remove-dups
          kernel-items kernel-index)
 
-;; kernel = (make-kernel (LR1-item list) index)
+;; kernel = (kernel (LR1-item list) index)
 ;;   the list must be kept sorted according to item<? so that equal? can
 ;;   be used to compare kernels
 ;;   Each kernel is assigned a unique index, 0 <= index < number of states
-;; trans-key = (make-trans-key kernel gram-sym)
-(define-struct kernel (items index) #:inspector (make-inspector))
-(define-struct trans-key (st gs) #:inspector (make-inspector))
+;; trans-key = (trans-key kernel gram-sym)
+(struct kernel (items index) #:inspector (make-inspector))
+(struct trans-key (st gs) #:inspector (make-inspector))
 
 (define (trans-key<? a b)
   (define kia (kernel-index (trans-key-st a)))
@@ -63,7 +63,7 @@
   (for ([trans-key/kernel (in-list assoc)])
        (define tk (car trans-key/kernel))
        (hash-table-add! reverse-hash 
-                        (make-trans-key (cdr trans-key/kernel)
+                        (trans-key (cdr trans-key/kernel)
                                         (trans-key-gs tk))
                         (trans-key-st tk)))
   (hash-map reverse-hash cons))
@@ -167,7 +167,7 @@
     (digraph (send grammar get-non-terms)
              (λ (nt)
                (filter non-term?
-                       (map (λ (prod) (sym-at-dot (make-item prod 0)))
+                       (map (λ (prod) (sym-at-dot (item prod 0)))
                             (send grammar get-prods-for-non-term nt))))
              (λ (nt) (list nt))
              (union non-term<?)
@@ -189,7 +189,7 @@
                              [x (in-list (send grammar 
                                                get-prods-for-non-term
                                                non-term))])
-                            (make-item x 0))
+                            (item x 0))
                  (LR0-closure (cdr i))))]
          [else (cons (car i) (LR0-closure (cdr i)))])]))
   
@@ -207,7 +207,7 @@
   ;; LR0-closure of kernel to the right, and grouping them by 
   ;; the term/non-term moved over.  Returns the kernels not
   ;; yet seen, and places the trans-keys into automaton
-  (define (goto kernel)
+  (define (goto ker)
     ;; maps a gram-syms to a list of items
     (define table (make-hasheq))
 
@@ -222,12 +222,12 @@
             (unless (member i already)
               (hash-set! table (gram-sym-symbol gs) (cons i already)))]
         ((zero? (vector-length (prod-rhs (item-prod i))))
-         (define current (hash-ref epsilons kernel (λ () null)))
-         (hash-set! epsilons kernel (cons i current)))))
+         (define current (hash-ref epsilons ker (λ () null)))
+         (hash-set! epsilons ker (cons i current)))))
     
     ;; Group the items of the LR0 closure of the kernel
     ;; by the character after the dot
-    (for ([item (in-list (LR0-closure (kernel-items kernel)))])
+    (for ([item (in-list (LR0-closure (kernel-items ker)))])
          (add-item! table item))
                   
     ;; each group is a new kernel, with the dot advanced.
@@ -253,16 +253,16 @@
                (define new-kernel (sort (filter values (map move-dot-right items)) item<?))
                (define unique-kernel (hash-ref kernels new-kernel
                                                (λ ()
-                                                 (define k (make-kernel new-kernel counter))
+                                                 (define k (kernel new-kernel counter))
                                                  (set! new #t)
                                                  (set! counter (add1 counter))
                                                  (hash-set! kernels new-kernel k)
                                                  k)))
                (if (term? gs)
-                   (set! automaton-term (cons (cons (make-trans-key kernel gs)
+                   (set! automaton-term (cons (cons (trans-key ker gs)
                                                     unique-kernel)
                                               automaton-term))
-                   (set! automaton-non-term (cons (cons (make-trans-key kernel gs)
+                   (set! automaton-non-term (cons (cons (trans-key ker gs)
                                                         unique-kernel)
                                                   automaton-non-term)))
                #;(printf "~a -> ~a on ~a\n" 
@@ -271,10 +271,10 @@
                          (gram-sym-symbol gs))
                (and new unique-kernel))))
 
-  (define starts  (map (λ (init-prod) (list (make-item init-prod 0)))
+  (define starts  (map (λ (init-prod) (list (item init-prod 0)))
                        (send grammar get-init-prods)))
   (define startk (for/list ([start (in-list starts)])
-                           (define k (make-kernel start counter))
+                           (define k (kernel start counter))
                            (hash-set! kernels start k)
                            (set! counter (add1 counter))
                            k))
@@ -290,9 +290,9 @@
        (enq! new-kernels (goto (car old-kernels)))
        (loop (cdr old-kernels) (cons (car old-kernels) seen-kernels))])))
 
-(define-struct q (f l) #:inspector (make-inspector) #:mutable)
+(struct q (f l) #:inspector (make-inspector) #:mutable)
 (define (empty-queue? q) (null? (q-f q)))
-(define (make-queue) (make-q null null))
+(define (make-queue) (q null null))
 
 (define (enq! q i)
   (cond

@@ -44,12 +44,12 @@
                     #`(let/ec ret
                         (syntax-parameterize 
                             ([return-without-pos (make-rename-transformer #'ret)])
-                          (make-position-token #,action start-pos end-pos)))]
+                          (position-token #,action start-pos end-pos)))]
                    [(eq? src-loc-style 'lexer-srcloc)
                     #`(let/ec ret
                         (syntax-parameterize 
                             ([return-without-srcloc (make-rename-transformer #'ret)])
-                          (make-srcloc-token #,action lexeme-srcloc)))]
+                          (srcloc-token #,action lexeme-srcloc)))]
                    [else action])])
     (syntax/loc action
       (λ (start-pos-p end-pos-p lexeme-p input-port-p)
@@ -151,7 +151,7 @@
     [(_ NAME RE) (identifier? #'NAME)
                  (syntax/loc stx
                    (define-syntax NAME
-                     (make-lex-abbrev (λ () (quote-syntax RE)))))]
+                     (lex-abbrev (λ () (quote-syntax RE)))))]
     [_ (raise-syntax-error 'define-lex-abbrev "form should be (define-lex-abbrev name re)" stx)]))
 
 (define-syntax (define-lex-abbrevs stx)
@@ -183,7 +183,7 @@
                (raise-syntax-error 'define-lex-trans "expected a procedure as the transformer, got ~e" func))
              (unless (procedure-arity-includes? func 1)
                (raise-syntax-error 'define-lex-trans "expected a procedure that accepts 1 argument as the transformer, got ~e" func))
-             (make-lex-trans func))))]
+             (lex-trans func))))]
     [_
      (raise-syntax-error
       #f
@@ -305,7 +305,7 @@
   
 (define (get-position ip)
   (define-values (line col off) (port-next-location ip))
-  (make-position off line col))
+  (position off line col))
 
 (define-syntax (create-unicode-abbrevs stx)
   (syntax-case stx ()

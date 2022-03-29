@@ -1,29 +1,29 @@
 #lang racket/base
 (require yaragg/parser-tools/private-yacc/grammar)
-(provide (except-out (all-defined-out) make-reduce make-reduce*)
-         (rename-out [make-reduce* make-reduce]))
+(provide (except-out (all-defined-out) reduce reduce*)
+         (rename-out [reduce* reduce]))
 
 ;; An action is 
-;;  - (make-shift int)
-;;  - (make-reduce prod runtime-action)
-;;  - (make-accept)
-;;  - (make-goto int)
+;;  - (shift int)
+;;  - (reduce prod runtime-action)
+;;  - (accept)
+;;  - (goto int)
 ;;  - (no-action)
 ;; A reduce contains a runtime-reduce so that sharing of the reduces can
 ;; be easily transferred to sharing of runtime-reduces.
   
-(define-struct action () #:inspector (make-inspector))
-(define-struct (shift action) (state) #:inspector (make-inspector))
-(define-struct (reduce action) (prod runtime-reduce) #:inspector (make-inspector))
-(define-struct (accept action) () #:inspector (make-inspector))
-(define-struct (goto action) (state) #:inspector (make-inspector))
-(define-struct (no-action action) () #:inspector (make-inspector))
+(struct action () #:inspector (make-inspector))
+(struct shift action (state) #:inspector (make-inspector))
+(struct reduce action (prod runtime-reduce) #:inspector (make-inspector))
+(struct accept action () #:inspector (make-inspector))
+(struct goto action (state) #:inspector (make-inspector))
+(struct no-action action () #:inspector (make-inspector))
   
-(define (make-reduce* p)
-  (make-reduce p
-               (vector (prod-index p)
-                       (gram-sym-symbol (prod-lhs p))
-                       (vector-length (prod-rhs p)))))
+(define (reduce* p)
+  (reduce p
+          (vector (prod-index p)
+                  (gram-sym-symbol (prod-lhs p))
+                  (vector-length (prod-rhs p)))))
 
 ;; A runtime-action is
 ;; non-negative-int        (shift)

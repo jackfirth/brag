@@ -121,7 +121,7 @@
 ;; resolve-conflict : (listof action?) -> action? bool bool
 (define (resolve-conflict actions)
   (cond
-    [(null? actions) (values (make-no-action) #f #f)]
+    [(null? actions) (values (no-action) #f #f)]
     [(null? (cdr actions)) (values (car actions) #f #f)]
     [else
      (define SR-conflict? (> (count shift? actions) 0))
@@ -221,11 +221,11 @@
        (table-add! table from-state-index gs
                    (cond
                      ((non-term? gs)
-                      (make-goto (kernel-index to-state)))
+                      (goto (kernel-index to-state)))
                      ((member gs end-terms)
-                      (make-accept))
+                      (accept))
                      (else
-                      (make-shift 
+                      (shift 
                        (kernel-index to-state))))))
   (send a for-each-state
         (λ (state)
@@ -239,7 +239,7 @@
                     (unless (start-item? item)
                       (let ((r (hash-ref reduce-cache item-prod
                                          (λ ()
-                                           (let ((r (make-reduce item-prod)))
+                                           (let ((r (reduce item-prod)))
                                              (hash-set! reduce-cache item-prod r)
                                              r)))))
                         (table-add! table

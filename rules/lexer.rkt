@@ -133,9 +133,9 @@
   (define-values (line-start col-start pos-start) (port-next-location ip))
   (define str (read ip))
   (define-values (line-end col-end pos-end) (port-next-location ip))
-  (make-position-token (token-LIT (string-append "\"" str "\""))
-                       (make-position pos-start line-start col-start)
-                       (make-position pos-end line-end col-end)))
+  (position-token (token-LIT (string-append "\"" str "\""))
+                       (position pos-start line-start col-start)
+                       (position pos-end line-end col-end)))
 
 (define (lex/1 ip)
   (match (peek-bytes 1 0 ip)

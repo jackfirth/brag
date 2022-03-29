@@ -24,7 +24,7 @@
     (define r (send a run-automaton (trans-key-st tk) (trans-key-gs tk)))
     (for/list ([non-term (in-list nullable-non-terms)]
                #:when (send a run-automaton r non-term))
-              (make-trans-key r non-term))))
+              (trans-key r non-term))))
   
 ;; compute-read: LR0-automaton * grammar -> (trans-key -> term set)
 ;; output term set is represented in bit-vector form
@@ -52,7 +52,7 @@
   (define rhs (prod-rhs prod))
   (define rhs-l (vector-length rhs))
   (append (if (and (> rhs-l 0) (eq? nt (vector-ref rhs (sub1 rhs-l))))
-              (list (make-item prod (sub1 rhs-l)))
+              (list (item prod (sub1 rhs-l)))
               null)
           (let loop ([i (sub1 rhs-l)])
             (cond
@@ -60,7 +60,7 @@
                     (non-term? (vector-ref rhs i)) 
                     (send g nullable-non-term? (vector-ref rhs i)))
                (if (eq? nt (vector-ref rhs (sub1 i)))
-                   (cons (make-item prod (sub1 i))
+                   (cons (item prod (sub1 i))
                          (loop (sub1 i)))
                    (loop (sub1 i)))]
               [else null]))))
@@ -88,7 +88,7 @@
                       (define prod (item-prod item))
                       (define rhs (prod-rhs prod))
                       (define lhs (prod-lhs prod))
-                      (map (λ (state) (make-trans-key state lhs))
+                      (map (λ (state) (trans-key state lhs))
                            (run-lr0-backward a 
                                              rhs
                                              (item-dot-pos item)
@@ -99,7 +99,7 @@
 (define (compute-lookback a g)
   (define num-states (send a get-num-states))
   (λ (state prod)
-    (map (λ (k) (make-trans-key k (prod-lhs prod)))
+    (map (λ (k) (trans-key k (prod-lhs prod)))
          (run-lr0-backward a (prod-rhs prod) (vector-length (prod-rhs prod)) state num-states))))
   
 ;; compute-follow:  LR0-automaton * grammar -> (trans-key -> term set)
@@ -142,7 +142,7 @@
         (λ (state)
           (for-each
            (λ (non-term)
-             (let ([res (f (make-trans-key state non-term))])
+             (let ([res (f (trans-key state non-term))])
                (when (not (null? res))
                  (printf "~a(~a, ~a) = ~a\n"
                          name

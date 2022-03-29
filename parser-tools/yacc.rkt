@@ -205,9 +205,9 @@
 (define (extract-no-src-pos ip)
   (extract-helper ip #f #f))
   
-(define-struct stack-frame (state value start-pos end-pos) #:inspector (make-inspector))
+(struct stack-frame (state value start-pos end-pos) #:inspector (make-inspector))
   
-(define (make-empty-stack i) (list (make-stack-frame i #f #f #f)))
+(define (make-empty-stack i) (list (stack-frame i #f #f #f)))
   
   
 ;; The table is a vector that maps each state to a hash-table that maps a
@@ -230,7 +230,7 @@
                             (cond
                               [(runtime-shift? a)
                                ;; (printf "shift:~a\n" (runtime-shift-state a))
-                               (cons (make-stack-frame (runtime-shift-state a)
+                               (cons (stack-frame (runtime-shift-state a)
                                                        val
                                                        start-pos
                                                        end-pos)
@@ -247,7 +247,7 @@
                      ;; (printf "shift:~a\n" (runtime-shift-state a))
                      (set! stack 
                            (cons
-                            (make-stack-frame (runtime-shift-state a) 
+                            (stack-frame (runtime-shift-state a) 
                                               #f 
                                               start-pos
                                               end-pos)
@@ -283,7 +283,7 @@
                   (cond
                     [(runtime-shift? action)
                      ;; (printf "shift:~a\n" (runtime-shift-state action))
-                     (parsing-loop (cons (make-stack-frame (runtime-shift-state action)
+                     (parsing-loop (cons (stack-frame (runtime-shift-state action)
                                                            val
                                                            start-pos
                                                            end-pos)
@@ -304,14 +304,14 @@
                          (parsing-loop 
                           (cons
                            (if src-pos
-                               (make-stack-frame
+                               (stack-frame
                                 goto 
                                 (apply (vector-ref actions (runtime-reduce-prod-num action)) args)
                                 (if (null? args) start-pos (cadr args))
                                 (if (null? args) 
                                     end-pos
                                     (list-ref args (- (* (runtime-reduce-rhs-length action) 3) 1))))
-                               (make-stack-frame
+                               (stack-frame
                                 goto 
                                 (apply (vector-ref actions (runtime-reduce-prod-num action)) args)
                                 #f

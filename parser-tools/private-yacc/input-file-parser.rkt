@@ -65,12 +65,12 @@
   (for ([p-decl (in-list precs)])
        (define assoc (car p-decl))
        (for ([term-sym (in-list (cdr p-decl))])
-            (hash-set! prec-table term-sym (make-prec counter assoc)))
+            (hash-set! prec-table term-sym (prec counter assoc)))
        (set! counter (add1 counter)))
       
   ;; Build the terminal structures
   (for/list ([term-sym (in-list term-list)])
-            (make-term term-sym 
+            (term term-sym 
                        #f
                        (hash-ref prec-table term-sym (λ () #f)))))
   
@@ -158,8 +158,7 @@
           prec-decls)]))
 
   (define terms (build-terms list-of-terms precs))
-  (define non-terms (map (λ (non-term) (make-non-term non-term #f))
-                         list-of-non-terms))
+  (define non-terms (map (λ (nt) (non-term nt #f)) list-of-non-terms))
   (define term-table (make-hasheq))
   (define non-term-table (make-hasheq))
   
@@ -215,7 +214,7 @@
     (syntax-case prod-so ()
       [(PROD-RHS ACTION)
        (let ([p (parse-prod #'PROD-RHS)])
-         (make-prod 
+         (prod 
           nt
           p
           #f
@@ -230,7 +229,7 @@
       [(PROD-RHS (PREC TERM) ACTION)
        (identifier? #'TERM)
        (let ([p (parse-prod #'PROD-RHS)])
-         (make-prod 
+         (prod 
           nt 
           p
           #f
@@ -269,18 +268,18 @@
         (format "Start symbol ~a not defined as a non-terminal" ssym)
         sstx))
 
-  (define starts (map (λ (x) (make-non-term (gensym) #f)) start-syms))
-  (define end-non-terms (map (λ (x) (make-non-term (gensym) #f)) start-syms))
+  (define starts (map (λ (x) (non-term (gensym) #f)) start-syms))
+  (define end-non-terms (map (λ (x) (non-term (gensym) #f)) start-syms))
   (define parsed-prods (map parse-prods-for-nt (syntax->list prods)))
   (define start-prods (for/list ([start (in-list starts)]
                                  [end-non-term (in-list end-non-terms)])
-                                (list (make-prod start (vector end-non-term) #f #f #'values))))
+                                (list (prod start (vector end-non-term) #f #f #'values))))
   (define new-prods 
     (append start-prods
             (for/list ([end-nt (in-list end-non-terms)]
                        [start-sym (in-list start-syms)])
                       (for/list ([end (in-list end-terms)])
-                                (make-prod end-nt
+                                (prod end-nt
                                            (vector
                                             (hash-ref non-term-table start-sym)
                                             (hash-ref term-table end))

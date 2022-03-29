@@ -3,7 +3,7 @@
   
 ;; Defining tokens
   
-(provide define-tokens define-empty-tokens make-token token?
+(provide define-tokens define-empty-tokens token token?
          (protect-out (rename-out [token-name real-token-name]))
          (protect-out (rename-out [token-value real-token-value]))
          (rename-out [token-name* token-name][token-value* token-value])
@@ -14,8 +14,8 @@
   
 ;; A token is either
 ;; - symbol
-;; - (make-token symbol any)
-(define-struct token (name value) #:inspector (make-inspector))
+;; - (token symbol any)
+(struct token (name value) #:inspector (make-inspector))
 
 ;; token-name*: token -> symbol
 (define (token-name* t)
@@ -48,8 +48,8 @@
          (begin
            (define-syntax NAME
              #,(if empty?
-                   #'(make-e-terminals-def (quote-syntax (marked-token ...)))
-                   #'(make-terminals-def (quote-syntax (marked-token ...)))))
+                   #'(e-terminals-def (quote-syntax (marked-token ...)))
+                   #'(terminals-def (quote-syntax (marked-token ...)))))
            #,@(map
                (λ (n)
                  (when (eq? (syntax-e n) 'error)
@@ -61,7 +61,7 @@
                      #`(define (#,(make-ctor-name n))
                          '#,n)
                      #`(define (#,(make-ctor-name n) x)
-                         (make-token '#,n x))))
+                         (token '#,n x))))
                (syntax->list #'(TOKEN ...)))
            #;(define marked-token #f) #;...)))]
     [(_ ...)
@@ -72,9 +72,9 @@
 (define-syntax define-tokens (make-define-tokens #f))
 (define-syntax define-empty-tokens (make-define-tokens #t))
 
-(define-struct position (offset line col) #:inspector #f)
-(define-struct position-token (token start-pos end-pos) #:inspector #f)
+(struct position (offset line col) #:inspector #f)
+(struct position-token (token start-pos end-pos) #:inspector #f)
 
-(define-struct srcloc-token (token srcloc) #:inspector #f)
+(struct srcloc-token (token srcloc) #:inspector #f)
   
 

@@ -14,34 +14,34 @@
 (define get-index (make-counter))
 
 ;; An re is either
-;; - (make-epsilonR bool nat)
-;; - (make-zeroR bool nat)
-;; - (make-char-setR bool nat char-set)
-;; - (make-concatR bool nat re re)
-;; - (make-repeatR bool nat nat nat-or-+inf.0 re)
-;; - (make-orR bool nat (list-of re))    Must not directly contain any orRs
-;; - (make-andR bool nat (list-of re))   Must not directly contain any andRs
-;; - (make-negR bool nat re)
+;; - (epsilonR bool nat)
+;; - (zeroR bool nat)
+;; - (char-setR bool nat char-set)
+;; - (concatR bool nat re re)
+;; - (repeatR bool nat nat nat-or-+inf.0 re)
+;; - (orR bool nat (list-of re))    Must not directly contain any orRs
+;; - (andR bool nat (list-of re))   Must not directly contain any andRs
+;; - (negR bool nat re)
 ;;
 ;; Every re must have an index field globally different from all
 ;; other re index fields.
-(define-struct re (nullable? index) #:inspector (make-inspector))
-(define-struct (epsilonR re) () #:inspector (make-inspector))
-(define-struct (zeroR re) () #:inspector (make-inspector))
-(define-struct (char-setR re) (chars) #:inspector (make-inspector))
-(define-struct (concatR re) (re1 re2) #:inspector (make-inspector))
-(define-struct (repeatR re) (low high re) #:inspector (make-inspector))
-(define-struct (orR re) (res) #:inspector (make-inspector))
-(define-struct (andR re) (res) #:inspector (make-inspector))
-(define-struct (negR re) (re) #:inspector (make-inspector))
+(struct re (nullable? index) #:inspector (make-inspector))
+(struct epsilonR re () #:inspector (make-inspector))
+(struct zeroR re () #:inspector (make-inspector))
+(struct char-setR re (chars) #:inspector (make-inspector))
+(struct concatR re (re1 re2) #:inspector (make-inspector))
+(struct repeatR re (low high re) #:inspector (make-inspector))
+(struct orR re (res) #:inspector (make-inspector))
+(struct andR re (res) #:inspector (make-inspector))
+(struct negR re (re) #:inspector (make-inspector))
 
 ;; e : re
 ;; The unique epsilon re
-(define e (make-epsilonR #t (get-index)))
+(define e (epsilonR #t (get-index)))
 
 ;; z : re
 ;; The unique zero re
-(define z (make-zeroR #f (get-index)))
+(define z (zeroR #f (get-index)))
 
 
 ;; s-re = char                       constant
@@ -145,7 +145,7 @@
     [else
      (cache l
             (λ ()
-              (make-char-setR #f (get-index) cs)))]))
+              (char-setR #f (get-index) cs)))]))
   
   
   
@@ -158,7 +158,7 @@
     [else
      (cache (cons 'concat (cons (re-index r1) (re-index r2)))
             (λ ()
-              (make-concatR (and (re-nullable? r1) (re-nullable? r2))
+              (concatR (and (re-nullable? r1) (re-nullable? r2))
                             (get-index)
                             r1 r2)))]))
   
@@ -180,7 +180,7 @@
       [else
        (cache (cons 'repeat (cons low (cons high (re-index r))))
               (λ ()
-                (make-repeatR (or (re-nullable? r) (= 0 low)) (get-index) low high r)))])))
+                (repeatR (or (re-nullable? r) (= 0 low)) (get-index) low high r)))])))
   
   
 ;; build-or : (list-of re) cache -> re
@@ -196,7 +196,7 @@
       [else
        (cache (cons 'or (map re-index rs))
               (λ ()
-                (make-orR (ormap re-nullable? rs) (get-index) rs)))])))
+                (orR (ormap re-nullable? rs) (get-index) rs)))])))
   
 ;; build-and : (list-of re) cache -> re
 (define (build-and rs cache)
@@ -208,7 +208,7 @@
       [else
        (cache (cons 'and (map re-index rs))
               (λ ()
-                (make-andR (andmap re-nullable? rs) (get-index) rs)))])))
+                (andR (andmap re-nullable? rs) (get-index) rs)))])))
       
 ;; build-neg : re cache -> re
 (define (build-neg r cache)
@@ -217,7 +217,7 @@
     [else
      (cache (cons 'neg (re-index r))
             (λ ()
-              (make-negR (not (re-nullable? r)) (get-index) r)))]))
+              (negR (not (re-nullable? r)) (get-index) r)))]))
   
 ;; Tests for the build-functions
 (test-block ((c (make-cache))

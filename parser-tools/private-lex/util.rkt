@@ -5,8 +5,8 @@
 
 (define max-char-num #x10FFFF)
 
-(define-struct lex-abbrev (get-abbrev))
-(define-struct lex-trans (f))
+(struct lex-abbrev (get-abbrev))
+(struct lex-trans (f))
 
 (module+ test 
   (require rackunit))

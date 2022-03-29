@@ -179,8 +179,8 @@
             ((get-final b) 4))
   
   
-;; A state is (make-state (list-of re-action) nat)
-(define-struct state (spec index))
+;; A state is (state (list-of re-action) nat)
+(struct state (spec index))
         
 ;; get->key : re-action -> (list-of nat)
 ;; states are indexed by the list of indexes of their res
@@ -205,20 +205,20 @@
              (r1 (->re `(char-range #\1 #\4) c))
              (r2 (->re `(char-range #\2 #\3) c)))
             ((compute-chars null) null)
-            ((compute-chars (list (make-state null 1))) null)
+            ((compute-chars (list (state null 1))) null)
             ((map is:integer-set-contents
-                  (compute-chars (list (make-state (list (cons r1 1) (cons r2 2)) 2))))
+                  (compute-chars (list (state (list (cons r1 1) (cons r2 2)) 2))))
              (list (is:integer-set-contents (is:make-range (c->i #\2) (c->i #\3)))
                    (is:integer-set-contents (is:union (is:make-range (c->i #\1))
                                                       (is:make-range (c->i #\4)))))))
   
   
-;; A dfa is (make-dfa int int
+;; A dfa is (dfa int int
 ;;                    (list-of (cons int syntax-object))
 ;;                    (list-of (cons int (list-of (cons char-set int)))))
 ;; Each transitions is a state and a list of chars with the state to transition to.
 ;; The finals and transitions are sorted by state number, and duplicate free.
-(define-struct dfa (num-states start-state final-states/actions transitions) #:inspector (make-inspector))
+(struct dfa (num-states start-state final-states/actions transitions) #:inspector (make-inspector))
   
 (define loc:get-integer is:get-integer)
   
@@ -226,7 +226,7 @@
 (define (build-dfa rs cache)
   (let* ([transitions (make-hash)]
          [get-state-number (make-counter)]
-         [start (make-state rs (get-state-number))])
+         [start (state rs (get-state-number))])
     (cache (cons 'state (get-key rs)) (λ () start))
     (let loop ([old-states (list start)]
                [new-states null]
@@ -234,7 +234,7 @@
                [cs (compute-chars (list start))])
       (cond
         [(and (null? old-states) (null? new-states))
-         (make-dfa (get-state-number) (state-index start)
+         (dfa (get-state-number) (state-index start)
                    (sort (for*/list ([state (in-list all-states)]
                                      [val (in-value (cons (state-index state) (get-final (state-spec state))))]
                                      #:when (cdr val))
@@ -252,21 +252,21 @@
         [(null? cs)
          (loop (cdr old-states) new-states all-states (compute-chars (cdr old-states)))]
         [else
-         (define state (car old-states))
+         (define s (car old-states))
          (define c (car cs))
-         (define new-re (derive (state-spec state) (loc:get-integer c) cache))
+         (define new-re (derive (state-spec s) (loc:get-integer c) cache))
          (cond
            [new-re
             (let* ([new-state? #f]
                    [new-state (cache (cons 'state (get-key new-re))
                                      (λ ()
                                        (set! new-state? #t)
-                                       (make-state new-re (get-state-number))))]
+                                       (state new-re (get-state-number))))]
                    [new-all-states (if new-state? (cons new-state all-states) all-states)])
               (hash-set! transitions 
-                         state
+                         s
                          (cons (cons c new-state)
-                               (hash-ref transitions state
+                               (hash-ref transitions s
                                          (λ () null))))
               (cond
                 [new-state?

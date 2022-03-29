@@ -41,10 +41,10 @@
 (provide cfg-parser)
 
 ;; A raw token, wrapped so that we can recognize it:
-(define-struct tok (name orig-name val start end))
+(struct tok (name orig-name val start end))
 
 ;; Represents the thread scheduler:
-(define-struct tasks (active active-back waits multi-waits cache progress?))
+(struct tasks (active active-back waits multi-waits cache progress?))
 
 (define-for-syntax make-token-identifier-mapping make-hasheq)
 (define-for-syntax (token-identifier-mapping-get t tok [fail #f])
@@ -187,50 +187,50 @@
            max-depth tasks))
 
 ;; Starts a thread
-(define (queue-task tasks t [progress? #t])
-  (make-tasks (tasks-active tasks)
-              (cons t (tasks-active-back tasks))
-              (tasks-waits tasks)
-              (tasks-multi-waits tasks)
-              (tasks-cache tasks)
-              (or progress? (tasks-progress? tasks))))
+(define (queue-task ts t [progress? #t])
+  (tasks (tasks-active ts)
+          (cons t (tasks-active-back ts))
+              (tasks-waits ts)
+              (tasks-multi-waits ts)
+              (tasks-cache ts)
+              (or progress? (tasks-progress? ts))))
 
 ;; Reports an answer to a waiting thread:
-(define (report-answer answer-key max-depth tasks val)
-  (define v (hash-ref (tasks-waits tasks) answer-key (λ () #f)))
+(define (report-answer answer-key max-depth ts val)
+  (define v (hash-ref (tasks-waits ts) answer-key (λ () #f)))
   (if v
-      (let ([tasks (make-tasks (cons (v val) (tasks-active tasks))
-                               (tasks-active-back tasks)
-                               (tasks-waits tasks)
-                               (tasks-multi-waits tasks)
-                               (tasks-cache tasks)
+      (let ([ts (tasks (cons (v val) (tasks-active ts))
+                               (tasks-active-back ts)
+                               (tasks-waits ts)
+                               (tasks-multi-waits ts)
+                               (tasks-cache ts)
                                #t)])
-        (hash-remove! (tasks-waits tasks) answer-key)
-        (swap-task max-depth tasks))
+        (hash-remove! (tasks-waits ts) answer-key)
+        (swap-task max-depth ts))
       ;; We have an answer ready too fast; wait
       (swap-task max-depth
-                 (queue-task tasks
+                 (queue-task ts
                              (λ (max-depth tasks)
                                (report-answer answer-key max-depth tasks val))
                              #f))))
 
 ;; Reports an answer to multiple waiting threads:
-(define (report-answer-all answer-key max-depth tasks val k)
-  (define v (hash-ref (tasks-multi-waits tasks) answer-key (λ () null)))
-  (hash-remove! (tasks-multi-waits tasks) answer-key)
-  (let ([tasks (make-tasks (append (map (λ (a) (a val)) v)
-                                   (tasks-active tasks))
-                           (tasks-active-back tasks)
-                           (tasks-waits tasks)
-                           (tasks-multi-waits tasks)
-                           (tasks-cache tasks)
+(define (report-answer-all answer-key max-depth ts val k)
+  (define v (hash-ref (tasks-multi-waits ts) answer-key (λ () null)))
+  (hash-remove! (tasks-multi-waits ts) answer-key)
+  (let ([ts (tasks (append (map (λ (a) (a val)) v)
+                                   (tasks-active ts))
+                           (tasks-active-back ts)
+                           (tasks-waits ts)
+                           (tasks-multi-waits ts)
+                           (tasks-cache ts)
                            #t)])
-    (k max-depth tasks)))
+    (k max-depth ts)))
 
 ;; Waits for an answer; if `multi?' is #f, this is sole waiter, otherwise
 ;;  there might be many. Use wither #t or #f (and `report-answer' or 
 ;;  `report-answer-all', resptively) consistently for a particular answer key.
-(define (wait-for-answer multi? max-depth tasks answer-key success-k fail-k deadlock-k)
+(define (wait-for-answer multi? max-depth ts answer-key success-k fail-k deadlock-k)
   (let ([wait (λ (val)
                 (λ (max-depth tasks)
                   (if val
@@ -240,58 +240,58 @@
                             (success-k val stream last-consumed-token depth max-depth tasks next-k)))
                       (deadlock-k max-depth tasks))))])
     (if multi?
-        (hash-set! (tasks-multi-waits tasks) answer-key
-                   (cons wait (hash-ref (tasks-multi-waits tasks) answer-key
+        (hash-set! (tasks-multi-waits ts) answer-key
+                   (cons wait (hash-ref (tasks-multi-waits ts) answer-key
                                         (λ () null))))
-        (hash-set! (tasks-waits tasks) answer-key wait))
-    (let ([tasks (make-tasks (tasks-active tasks)
-                             (tasks-active-back tasks)
-                             (tasks-waits tasks)
-                             (tasks-multi-waits tasks)
-                             (tasks-cache tasks)
+        (hash-set! (tasks-waits ts) answer-key wait))
+    (let ([ts (tasks (tasks-active ts)
+                             (tasks-active-back ts)
+                             (tasks-waits ts)
+                             (tasks-multi-waits ts)
+                             (tasks-cache ts)
                              #t)])
-      (swap-task max-depth tasks))))
+      (swap-task max-depth ts))))
 
 ;; Swap thread
-(define (swap-task max-depth tasks)
+(define (swap-task max-depth ts)
   ;; Swap in first active:
-  (if (null? (tasks-active tasks))
-      (if (tasks-progress? tasks)
+  (if (null? (tasks-active ts))
+      (if (tasks-progress? ts)
           (swap-task max-depth
-                     (make-tasks (reverse (tasks-active-back tasks))
+                     (tasks (reverse (tasks-active-back ts))
                                  null
-                                 (tasks-waits tasks)
-                                 (tasks-multi-waits tasks)
-                                 (tasks-cache tasks)
+                                 (tasks-waits ts)
+                                 (tasks-multi-waits ts)
+                                 (tasks-cache ts)
                                  #f))
           ;; No progress, so issue failure for all multi-waits
-          (if (zero? (hash-count (tasks-multi-waits tasks)))
+          (if (zero? (hash-count (tasks-multi-waits ts)))
               (error 'swap-task "Deadlock")
               (swap-task max-depth
-                         (make-tasks (apply
+                         (tasks (apply
                                       append
-                                      (hash-map (tasks-multi-waits tasks)
+                                      (hash-map (tasks-multi-waits ts)
                                                 (λ (k l)
                                                   (map (λ (v) (v #f)) l))))
-                                     (tasks-active-back tasks)
-                                     (tasks-waits tasks)
+                                     (tasks-active-back ts)
+                                     (tasks-waits ts)
                                      (make-hasheq)
-                                     (tasks-cache tasks)
+                                     (tasks-cache ts)
                                      #t))))
-      (let ([t (car (tasks-active tasks))]
-            [tasks (make-tasks (cdr (tasks-active tasks))
-                               (tasks-active-back tasks)
-                               (tasks-waits tasks)
-                               (tasks-multi-waits tasks)
-                               (tasks-cache tasks)
-                               (tasks-progress? tasks))])
-        (t max-depth tasks))))
+      (let ([t (car (tasks-active ts))]
+            [ts (tasks (cdr (tasks-active ts))
+                               (tasks-active-back ts)
+                               (tasks-waits ts)
+                               (tasks-multi-waits ts)
+                               (tasks-cache ts)
+                               (tasks-progress? ts))])
+        (t max-depth ts))))
 
 ;; Finds the symbolic representative of a token class
 (define-for-syntax (map-token toks tok)
   (car (token-identifier-mapping-get toks tok)))
 
-(define no-pos-val (make-position #f #f #f))
+(define no-pos-val (position #f #f #f))
 (define-for-syntax no-pos 
   (let ([npv ((syntax-local-certifier) #'no-pos-val)])
     (λ (stx) npv)))
@@ -642,7 +642,7 @@
                                         cfg-error
                                         src-pos?
                                         (list*
-                                         (with-syntax ([((tok tok-id . $e) ...)
+                                         (with-syntax ([((tk tok-id . $e) ...)
                                                         (token-identifier-mapping-map toks
                                                                                       (λ (k v)
                                                                                         (list* k
@@ -661,7 +661,7 @@
                                                        [%atok atok-id-temp])
                                            #`(grammar (%start [() null]
                                                               [(%atok %start) (cons $1 $2)])
-                                                      (%atok [(tok) (make-tok 'tok-id 'tok $e pos ...)] ...)))
+                                                      (%atok [(tk) (tok 'tok-id 'tk $e pos ...)] ...)))
                                          (with-syntax ([%start start-id-temp])
                                            #`(start %start))
                                          parser-clauses)))]
@@ -705,8 +705,8 @@
                                              (error-proc #t
                                                          'no-tokens
                                                          #f
-                                                         (make-position #f #f #f)
-                                                         (make-position #f #f #f))
+                                                         (position #f #f #f)
+                                                         (position #f #f #f))
                                              (error
                                               'cfg-parse
                                               "no tokens"))]
@@ -745,7 +745,7 @@
                               success-k
                               fail-k
                               0 
-                              (make-tasks null null 
+                              (tasks null null 
                                           (make-hasheq) (make-hasheq)
                                           (make-hash) #t)))))))))]))
 

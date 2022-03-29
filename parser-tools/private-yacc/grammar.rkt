@@ -7,29 +7,29 @@
          racket/contract)
   
 ;; Each production has a unique index 0 <= index <= number of productions
-(define-struct prod (lhs rhs index prec action) #:inspector (make-inspector) #:mutable)
+(struct prod (lhs rhs index prec action) #:inspector (make-inspector) #:mutable)
 
 ;; The dot-pos field is the index of the element in the rhs
 ;; of prod that the dot immediately precedes.
 ;; Thus 0 <= dot-pos <= (vector-length rhs).
-(define-struct item (prod dot-pos) #:inspector (make-inspector))
+(struct item (prod dot-pos) #:inspector (make-inspector))
   
 ;; gram-sym = (union term? non-term?)
 ;; Each term has a unique index 0 <= index < number of terms
 ;; Each non-term has a unique index 0 <= index < number of non-terms  
-(define-struct term (sym index prec) #:inspector (make-inspector) #:mutable)
-(define-struct non-term (sym index) #:inspector (make-inspector) #:mutable)
+(struct term (sym index prec) #:inspector (make-inspector) #:mutable)
+(struct non-term (sym index) #:inspector (make-inspector) #:mutable)
 
 ;; a precedence declaration.
-(define-struct prec (num assoc) #:inspector (make-inspector))
+(struct prec (num assoc) #:inspector (make-inspector))
   
 (provide/contract
- [make-item (prod? (or/c #f natural-number/c) . -> . item?)]
- [make-term (symbol? (or/c #f natural-number/c) (or/c prec? #f) . -> . term?)]
- [make-non-term (symbol? (or/c #f natural-number/c) . -> . non-term?)]
- [make-prec (natural-number/c (or/c 'left 'right 'nonassoc) . -> . prec?)]
- [make-prod (non-term? (vectorof (or/c non-term? term?))
-                       (or/c #f natural-number/c) (or/c #f prec?) syntax? . -> . prod?)])
+ [item (prod? (or/c #f natural-number/c) . -> . item?)]
+ [term (symbol? (or/c #f natural-number/c) (or/c prec? #f) . -> . term?)]
+ [non-term (symbol? (or/c #f natural-number/c) . -> . non-term?)]
+ [prec (natural-number/c (or/c 'left 'right 'nonassoc) . -> . prec?)]
+ [prod (non-term? (vectorof (or/c non-term? term?))
+                  (or/c #f natural-number/c) (or/c #f prec?) syntax? . -> . prod?)])
   
 (provide
  ;; Things that work on items
@@ -73,7 +73,7 @@
 (define (move-dot-right i)
   (cond
     [(= (item-dot-pos i) (vector-length (prod-rhs (item-prod i)))) #f]
-    [else (make-item (item-prod i)
+    [else (item (item-prod i)
                      (add1 (item-dot-pos i)))]))
 
 ;; sym-at-dot: LR-item -> gram-sym | #f

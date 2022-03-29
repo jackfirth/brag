@@ -246,14 +246,14 @@ are a few examples, using @racket[:] prefixed SRE syntax:
 @defform[(lexer-src-pos (trigger action-expr) ...)]{
 
 Like @racket[lexer], but for each @racket[_action-result] produced by
-an @racket[action-expr], returns @racket[(make-position-token
+an @racket[action-expr], returns @racket[(position-token
 _action-result start-pos end-pos)] instead of simply
 @racket[_action-result].}
 
 @defform[(lexer-srcloc (trigger action-expr) ...)]{
 
 Like @racket[lexer], but for each @racket[_action-result] produced by
-an @racket[action-expr], returns @racket[(make-srcloc-token
+an @racket[action-expr], returns @racket[(srcloc-token
 _action-result lexeme-srcloc)] instead of simply
 @racket[_action-result].}
 
@@ -646,7 +646,7 @@ be the right choice when using @racket[lexer] in other situations.
       @item{@racket[(src-pos)] @italic{OPTIONAL}
 
       Causes the generated parser to expect input in the form
-      @racket[(make-position-token _token _start-pos _end-pos)] instead
+      @racket[(position-token _token _start-pos _end-pos)] instead
       of simply @racket[_token].  Include this option when using the
       parser with a lexer generated with @racket[lexer-src-pos].}
 
