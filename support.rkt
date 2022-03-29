@@ -1,9 +1,9 @@
 #lang racket/base
-(require yaragg/parser-tools/lex
+(require (for-syntax racket/base
+                     syntax/parse)
+         yaragg/parser-tools/lex
          racket/string
-         racket/struct
-         (prefix-in : yaragg/parser-tools/lex-sre)
-         (for-syntax racket/base))
+         (prefix-in : yaragg/parser-tools/lex-sre))
 (provide (all-from-out yaragg/parser-tools/lex)
          (all-from-out yaragg/parser-tools/lex-sre)
          [struct-out token-struct]
@@ -107,23 +107,23 @@
 
 (provide from/to)
 (define-lex-trans from/to
-  (λ(stx)
-    (syntax-case stx ()
+  (λ (stx)
+    (syntax-parse stx
       [(_ OPEN CLOSE)
        #'(:seq (from/stop-before OPEN CLOSE) CLOSE)])))
 
 (provide from/stop-before)
 (define-lex-trans from/stop-before
-  (λ(stx)
-    (syntax-case stx ()
+  (λ (stx)
+    (syntax-parse stx
       [(_ OPEN CLOSE)
        ;; (:seq any-string CLOSE any-string) pattern makes it non-greedy
        #'(:seq OPEN (complement (:seq any-string CLOSE any-string)))])))
 
 (provide uc+lc)
 (define-lex-trans uc+lc
-  (λ(stx)
-    (syntax-case stx ()
+  (λ (stx)
+    (syntax-parse stx
       [(_ . STRS)
        (with-syntax ([(UCSTR ...) (map (compose1 string-upcase syntax->datum) (syntax->list #'STRS))]
                      [(LCSTR ...) (map (compose1 string-downcase syntax->datum) (syntax->list #'STRS))])
