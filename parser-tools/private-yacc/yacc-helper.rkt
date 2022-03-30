@@ -3,7 +3,7 @@
          yaragg/parser-tools/private-lex/token-syntax)
 
 ;; General helper routines
-(provide duplicate-list? remove-duplicates overlap? vector-andmap display-yacc)
+(provide duplicate-list? remove-duplicates overlap? vector-andmap)
     
 (define (vector-andmap pred vec)
   (for/and ([item (in-vector vec)])
@@ -26,46 +26,3 @@
   (for/first ([sym1 (in-list syms1)]
               #:when (memq sym1 syms2))
     sym1))
-
-  
-(define (display-yacc grammar tokens start precs port)
-  (let-syntax ([p (syntax-rules ()
-                    ((_ args ...) (fprintf port args ...)))])
-    (let* ([tokens (map syntax-local-value tokens)]
-           [eterms (filter e-terminals-def? tokens)]
-           [terms (filter terminals-def? tokens)]
-           [term-table (make-hasheq)]
-           [display-rhs
-            (λ (rhs)
-              (for ([sym (in-list (car rhs))])
-                (p "~a " (hash-ref term-table sym (λ () sym))))
-              (when (= 3 (length rhs))
-                (p "%prec ~a" (cadadr rhs)))
-              (p "\n"))])
-      (for* ([t (in-list eterms)]
-             [t (in-list (syntax->datum (e-terminals-def-t t)))])
-        (hash-set! term-table t (format "'~a'" t)))
-      (for* ([t (in-list terms)]
-             [t (in-list (syntax->datum (terminals-def-t t)))])
-        (p "%token ~a\n" t)
-        (hash-set! term-table t (format "~a" t)))
-      (when precs
-        (for ([prec (in-list precs)])
-          (p "%~a " (car prec))
-          (for ([tok (in-list (cdr prec))])
-            (p " ~a" (hash-ref term-table tok)))
-          (p "\n")))
-      (p "%start ~a\n" start)
-      (p "%%\n")
-      (for ([prod (in-list grammar)])
-        (define nt (car prod))
-        (p "~a: " nt)
-        (display-rhs (cadr prod))
-        (for ([rhs (in-list (cddr prod))])
-          (p "| ")
-          (display-rhs rhs))
-        (p ";\n"))
-      (p "%%\n"))))
-
-  
-  

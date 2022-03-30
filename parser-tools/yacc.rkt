@@ -36,11 +36,10 @@
            [end #f]
            [precs #f]
            [suppress #f]
-           [grammar #f]
-           [yacc-output #f])
+           [grammar #f])
        (for ([arg (in-list (syntax->list #'(ARGS ...)))])
          (syntax-case* arg (debug error tokens start end precs grammar
-                                  suppress src-pos yacc-output)
+                                  suppress src-pos)
            (λ (a b) (eq? (syntax-e a) (syntax-e b)))
            [(debug FILENAME)
             (cond
@@ -94,14 +93,6 @@
             (if grammar
                 (raise-syntax-error #f "Multiple grammar declarations" stx)
                 (set! grammar (syntax/loc arg (PRODS ...))))]
-           [(yacc-output FILENAME)
-            (cond
-              [(not (string? (syntax-e #'FILENAME)))
-               (raise-syntax-error #f "Yacc-output filename must be a string" stx #'FILENAME)]
-              [yacc-output
-               (raise-syntax-error #f "Multiple yacc-output declarations" stx)]
-              [else
-               (set! yacc-output (syntax-e #'FILENAME))])]
            [_ (raise-syntax-error #f "argument must match (debug filename), (error expression), (tokens def ...), (start non-term), (end tokens ...), (precs decls ...), or  (grammar prods ...)" stx arg)]))
        (unless tokens
          (raise-syntax-error #f "missing tokens declaration" stx))
@@ -122,17 +113,6 @@
                        end
                        precs
                        grammar))
-       (when (and yacc-output (not (string=? yacc-output "")))
-         (with-handlers [(exn:fail:filesystem?
-                          (λ (e) (eprintf "Cannot write yacc-output to file \"~a\"\n" yacc-output)))]
-           (call-with-output-file yacc-output
-             (λ (port)
-               (display-yacc (syntax->datum grammar) 
-                             tokens 
-                             (map syntax->datum start)
-                             (and precs (syntax->datum precs))
-                             port))
-             #:exists 'truncate)))
        (with-syntax ([check-syntax-fix check-syntax-fix]
                      [err error]
                      [ends end]

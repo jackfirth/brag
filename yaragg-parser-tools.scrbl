@@ -516,7 +516,7 @@ be the right choice when using @racket[lexer] in other situations.
 @defmodule[yaragg/parser-tools/yacc]
 
 @defform/subs[#:literals (grammar tokens start end precs src-pos
-                          suppress debug yacc-output prec)
+                          suppress debug prec)
               (parser clause ...)
               ([clause (grammar (non-terminal-id 
                                  ((grammar-id ...) maybe-prec expr)
@@ -529,8 +529,7 @@ be the right choice when using @racket[lexer] in other situations.
                        (precs (assoc token-id ...) ...)
                        (src-pos)
                        (suppress)
-                       (debug filename)
-                       (yacc-output filename)]
+                       (debug filename)]
                [maybe-prec code:blank
                            (prec token-id)]
                [assoc left right nonassoc])]{
@@ -664,14 +663,6 @@ be the right choice when using @racket[lexer] in other situations.
       the LALR table file.}
 
 
-      @item{@racket[(yacc-output filename)] @italic{OPTIONAL}
-
-      Causes the parser generator to write a grammar file in
-      approximately the syntax of @exec{yacc}/@exec{bison}.  The file
-      might not be a valid @exec{yacc} file, because the Racket
-      grammar can use symbols that are invalid in C.}
-
-
       @item{@racket[(suppress)] @italic{OPTIONAL}
 
       Causes the parser generator not to report shift/reduce or
@@ -717,7 +708,7 @@ library provides a parser generator that is an alternative to that of
 @racketmodname[yaragg/parser-tools/yacc].}
 
 @defform/subs[#:literals (grammar tokens start end precs src-pos
-                          suppress debug yacc-output prec)
+                          suppress debug prec)
               (cfg-parser clause ...)
               ([clause (grammar (non-terminal-id 
                                  ((grammar-id ...) maybe-prec expr)
@@ -742,30 +733,9 @@ library provides a parser generator that is an alternative to that of
       a single non-terminal-id.}
                        
       @item{The @racket[cfg-parser] form does not support the @racket[precs], 
-             @racket[suppress], @racket[debug], or @racket[yacc-output]
-             options of @racket[parser].}
+             @racket[suppress], or @racket[debug] options of @racket[parser].}
    ]
 }                                            
-                                            
-@; ----------------------------------------------------------------------
-
-@section{Converting @exec{yacc} or @exec{bison} Grammars}
-
-@defmodule[yaragg/parser-tools/yacc-to-scheme]
-
-@defproc[(trans [file path-string?]) any/c]{
-
-Reads a C @exec{yacc}/@exec{bison} grammar from @racket[file] and
-produces an s-expression that represents a Racket parser for use with
-@racket[parser].
-
-This function is intended to assist in the manual conversion of
-grammars for use with @racket[parser], and not as a fully automatic
-conversion tool.  It is not entirely robust.  For example, if the C
-actions in the original grammar have nested blocks, the tool will fail.
-
-Annotated examples are in the @filepath{examples} subdirectory of the
-@filepath{yaragg-parser-tools} collection.}
 
 @; ----------------------------------------------------------------------
 
