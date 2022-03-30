@@ -1,7 +1,8 @@
 #lang racket/base
 (require yaragg/parser-tools/private-yacc/lr0
          yaragg/parser-tools/private-yacc/grammar
-         racket/class)
+         racket/class
+         racket/list)
 
 ;; Compute LALR lookaheads from DeRemer and Pennello 1982
 

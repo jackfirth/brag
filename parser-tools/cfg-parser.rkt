@@ -32,7 +32,8 @@
 
 
 (require yaragg/parser-tools/yacc
-         yaragg/parser-tools/lex)
+         yaragg/parser-tools/lex
+         racket/list)
 
 (require (for-syntax racket/base
                      syntax/boundmap

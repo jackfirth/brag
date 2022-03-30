@@ -1,5 +1,6 @@
 #lang racket/base
 (require (prefix-in is: data/integer-set)
+         racket/list
          yaragg/parser-tools/private-lex/re
          yaragg/parser-tools/private-lex/util)
 
