@@ -27,9 +27,9 @@
     [(repeatR? r)
      (get-char-groups (repeatR-re r) found-negation)]
     [(orR? r)
-     (apply append (map (λ (x) (get-char-groups x found-negation)) (orR-res r)))]
+     (append-map (λ (x) (get-char-groups x found-negation)) (orR-res r))]
     [(andR? r)
-     (apply append (map (λ (x) (get-char-groups x found-negation)) (andR-res r)))]
+     (append-map (λ (x) (get-char-groups x found-negation)) (andR-res r))]
     [(negR? r)
      (if found-negation
          (get-char-groups (negR-re r) #t)
@@ -197,8 +197,7 @@
     [(null? st) '()]
     [else
      (loc:partition (map char-setR-chars
-                         (apply append (map (λ (x) (get-char-groups (car x) #f))
-                                            (state-spec (car st))))))]))
+                         (append-map (λ (x) (get-char-groups (car x) #f)) (state-spec (car st)))))]))
   
 (test-block ((c (make-cache))
              (c->i char->integer)

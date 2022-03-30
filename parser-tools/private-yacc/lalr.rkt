@@ -69,7 +69,7 @@
 ;; return the list of all (B -> beta . nt gamma) such that  (B -> beta nt gamma) in prod-list
 ;; and gamma =>* epsilon
 (define (prod-list->items-for-include g prod-list nt)
-  (apply append (map (λ (prod) (prod->items-for-include g prod nt)) prod-list)))
+  (append-map (λ (prod) (prod->items-for-include g prod nt)) prod-list))
 
 ;; comput-includes: lr0-automaton * grammar -> (trans-key -> trans-key list)
 (define (compute-includes a g)

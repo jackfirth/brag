@@ -88,7 +88,7 @@
 (define (get-term-list term-group-names)
   (remove-duplicates
    (cons (datum->syntax #f 'error)
-         (apply append (map get-terms-from-def term-group-names)))))
+         (append-map get-terms-from-def term-group-names))))
   
 (define (parse-input term-defs start ends prec-decls prods src-pos)
   (define start-syms (map syntax-e start))
