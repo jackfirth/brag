@@ -186,7 +186,7 @@
   (define gs (trans-key-gs tk))
   (hash-ref (vector-ref map (kernel-index st))
             (gram-sym-symbol gs)
-            (λ () 0)))
+            0))
 
 ;; add-tk-map : (vectorof (symbol? int hashtable)) -> trans-key int -> 
 (define ((add-tk-map map) tk v)

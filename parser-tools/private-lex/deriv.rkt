@@ -267,7 +267,7 @@
                          s
                          (cons (cons c new-state)
                                (hash-ref transitions s
-                                         (λ () '()))))
+                                         '())))
               (cond
                 [new-state?
                  (loop old-states (cons new-state new-states) new-all-states (cdr cs))]

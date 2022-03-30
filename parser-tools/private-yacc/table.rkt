@@ -30,7 +30,7 @@
   (for/vector ([state-entry (in-list (vector->list table))])
     (define ht (make-hasheq))
     (for* ([gs/actions (in-list state-entry)]
-           [group (in-value (hash-ref ht (car gs/actions) (λ () '())))]
+           [group (in-value (hash-ref ht (car gs/actions) '()))]
            #:unless (member (cdr gs/actions) group))
       (hash-set! ht (car gs/actions) (cons (cdr gs/actions) group)))
     (hash-map ht cons)))
@@ -226,7 +226,7 @@
                        (kernel-index to-state))))))
   (send a for-each-state
         (λ (state)
-          (for ([item (in-list (append (hash-ref (send a get-epsilon-trans) state (λ () '()))
+          (for ([item (in-list (append (hash-ref (send a get-epsilon-trans) state '())
                                        (filter (λ (item)
                                                  (not (move-dot-right item)))
                                                (kernel-items state))))])

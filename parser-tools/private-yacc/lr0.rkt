@@ -59,7 +59,7 @@
 (define (reverse-assoc assoc)
   (define reverse-hash (make-hash))
   (define (hash-table-add! ht k v)
-    (hash-set! ht k (cons v (hash-ref ht k (λ () '())))))
+    (hash-set! ht k (cons v (hash-ref ht k '()))))
   (for ([trans-key/kernel (in-list assoc)])
        (define tk (car trans-key/kernel))
        (hash-table-add! reverse-hash 
@@ -118,7 +118,7 @@
     (define/public (run-automaton k s)
       (hash-ref (vector-ref transitions (kernel-index k))
                 (gram-sym-symbol s)
-                (λ () #f)))
+                #f))
 
     ;; run-automaton-back : (listof kernel?) gram-sym? -> (listof kernel)
     ;; returns the list of states that can reach k by transitioning on s.
@@ -126,7 +126,7 @@
       (for*/list ([k (in-list k)]
                   [val (in-list (hash-ref (vector-ref reverse-transitions (kernel-index k))
                                           (gram-sym-symbol s)
-                                          (λ () '())))])
+                                          '()))])
                  val))))
 
 (define ((union comp<?) l1 l2)
@@ -216,11 +216,11 @@
     (define (add-item! table i)
       (define gs (sym-at-dot i))
       (cond
-        [gs (define already (hash-ref table (gram-sym-symbol gs) (λ () '())))
+        [gs (define already (hash-ref table (gram-sym-symbol gs) '()))
             (unless (member i already)
               (hash-set! table (gram-sym-symbol gs) (cons i already)))]
         ((zero? (vector-length (prod-rhs (item-prod i))))
-         (define current (hash-ref epsilons ker (λ () '())))
+         (define current (hash-ref epsilons ker '()))
          (hash-set! epsilons ker (cons i current)))))
     
     ;; Group the items of the LR0 closure of the kernel
@@ -237,7 +237,7 @@
         (cond
           [(null? gsyms) '()]
           [else
-           (define items (hash-ref table (gram-sym-symbol (car gsyms)) (λ () '())))
+           (define items (hash-ref table (gram-sym-symbol (car gsyms)) '()))
            (cond
              [(null? items) (loop (cdr gsyms))]
              [else (cons (list (car gsyms) items)

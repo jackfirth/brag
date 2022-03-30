@@ -22,7 +22,7 @@
       (for ([term (in-list term-binders)])
            (hash-set! t (syntax-e term) term))
       (λ (x)
-        (define r (hash-ref t (syntax-e x) (λ () #f)))
+        (define r (hash-ref t (syntax-e x) #f))
         (if r
             (syntax-local-introduce (datum->syntax r (syntax-e x) x x))
             x))))

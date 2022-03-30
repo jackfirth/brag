@@ -63,7 +63,7 @@
            [(exp) $1])
     
     (exp [(NUM) $1]
-         [(VAR) (hash-ref vars $1 (lambda () 0))]
+         [(VAR) (hash-ref vars $1 0)]
          [(VAR = exp) (begin (hash-set! vars $1 $3)
                              $3)]
          [(FNCT OP exp CP) ($1 $3)]

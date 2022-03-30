@@ -199,7 +199,7 @@
 
 ;; Reports an answer to a waiting thread:
 (define (report-answer answer-key max-depth ts val)
-  (define v (hash-ref (tasks-waits ts) answer-key (λ () #f)))
+  (define v (hash-ref (tasks-waits ts) answer-key #f))
   (if v
       (let ([ts (tasks (cons (v val) (tasks-active ts))
                                (tasks-active-back ts)
@@ -218,7 +218,7 @@
 
 ;; Reports an answer to multiple waiting threads:
 (define (report-answer-all answer-key max-depth ts val k)
-  (define v (hash-ref (tasks-multi-waits ts) answer-key (λ () '())))
+  (define v (hash-ref (tasks-multi-waits ts) answer-key '()))
   (hash-remove! (tasks-multi-waits ts) answer-key)
   (let ([ts (tasks (append (map (λ (a) (a val)) v)
                                    (tasks-active ts))
@@ -244,7 +244,7 @@
     (if multi?
         (hash-set! (tasks-multi-waits ts) answer-key
                    (cons wait (hash-ref (tasks-multi-waits ts) answer-key
-                                        (λ () '()))))
+                                        '())))
         (hash-set! (tasks-waits ts) answer-key wait))
     (let ([ts (tasks (tasks-active ts)
                              (tasks-active-back ts)
@@ -407,7 +407,7 @@
                ;; Check whether we already have a result that consumed the same amount:
                (define result-key (vector #f key old-depth depth))
                (cond
-                 [(hash-ref (tasks-cache tasks) result-key (λ () #f))
+                 [(hash-ref (tasks-cache tasks) result-key #f)
                   ;; Go for the next-result
                   (result-loop max-depth
                                tasks

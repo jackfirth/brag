@@ -71,7 +71,7 @@
   (for/list ([term-sym (in-list term-list)])
     (term term-sym 
           #f
-          (hash-ref prec-table term-sym (λ () #f)))))
+          (hash-ref prec-table term-sym #f))))
   
 ;; Retrieves the terminal symbols from a terminals-def (See terminal-syntax.rkt)
 ;; get-terms-from-def: identifier? -> (listof identifier?)
