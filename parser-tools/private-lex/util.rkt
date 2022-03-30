@@ -83,23 +83,23 @@
 
 (module+ test
   (check-equal? (remove-dups '((1 2) (2 2) (1 3) (1 4)
-                                     (100 4) (0 5)) cadr null)
+                                     (100 4) (0 5)) cadr '())
                 '((1 2) (1 3) (1 4) (0 5)))
-  (check-equal? (remove-dups null error null) null))
+  (check-equal? (remove-dups '() error '()) '()))
 
 ;; do-simple-equiv : (list-of X) (X -> nat) -> (list-of X)
 ;; Sorts l according to index and removes the entries with duplicate
 ;; indexes.
 (define (do-simple-equiv l index)
   (define ordered (sort l < #:key index))
-  (remove-dups ordered index null))
+  (remove-dups ordered index '()))
 
 (module+ test
   (check-equal? (do-simple-equiv '((2 2) (1 4) (1 2)
                                          (100 4) (1 3)  (0 5)) 
                                  cadr)
                 '((2 2) (1 3) (1 4) (0 5)))
-  (check-equal? (do-simple-equiv null error) null))
+  (check-equal? (do-simple-equiv '() error) '()))
 
 ;; replace : (list-of X) (X -> bool) (X -> (list-of X)) (list-of X) ->
 ;;           (list-of X)
@@ -113,11 +113,11 @@
 
 
 (module+ test
-  (check-equal? (replace null void (λ () (list 1)) null) null)
+  (check-equal? (replace '() void (λ () (list 1)) '()) '())
   (check-equal? (replace '(1 2 3 4 3 5)
                          (λ (x) (= x 3))
                          (λ (x) (list 1 2 3))
-                         null)
+                         '())
                 '(5 1 2 3 4 1 2 3 2 1)))
   
   

@@ -47,7 +47,7 @@
                        (get-string-token input-port))]
    [(:: #\\ #\\) (cons #\\ (get-string-token input-port))]
    [(:: #\\ #\") (cons #\" (get-string-token input-port))]
-   [#\" null]))
+   [#\" '()]))
   
   
 (define-lex-abbrevs
@@ -226,7 +226,7 @@
           [(UNQUOTE-SPLICING sexp) (build-so (list 'unquote-splicing $2) 1 2)]
           [(OP sexp-list DOT sexp CP) (build-so (append (reverse $2) $4) 1 5)])
       
-    (sexp-list [() null]
+    (sexp-list [() '()]
                [(sexp-list sexp) (cons $2 $1)]))))
   
 (define (rs sn ip)

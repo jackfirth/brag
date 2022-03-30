@@ -117,7 +117,7 @@
   (let loop ([res l]
              ;; chars : (union #f char-set)
              [chars #f]
-             [no-chars null])
+             [no-chars '()])
     (cond
       [(null? res) 
        (if chars
@@ -189,7 +189,7 @@
   (let ([rs 
          (filter
           (λ (x) (not (eq? x z)))
-          (do-simple-equiv (replace rs orR? orR-res null) re-index))])
+          (do-simple-equiv (replace rs orR? orR-res '()) re-index))])
     (cond
       [(null? rs) z]
       [(null? (cdr rs)) (car rs)]
@@ -201,7 +201,7 @@
   
 ;; build-and : (list-of re) cache -> re
 (define (build-and rs cache)
-  (let ([rs (do-simple-equiv (replace rs andR? andR-res null) re-index)])
+  (let ([rs (do-simple-equiv (replace rs andR? andR-res '()) re-index)])
     (cond
       [(null? rs) (build-neg z cache)]
       [(null? (cdr rs)) (car rs)]
@@ -260,7 +260,7 @@
             (ro4 (build-or `(,r1 ,r2 ,r3) c))
             ((orR-res ro) (list rc rr))
             ((orR-res ro4) (list r1 r2 r3))
-            ((build-or null c) z)
+            ((build-or '() c) z)
             ((build-or `(,r1 ,z) c) r1)
             ((build-repeat 0 +inf.0 rc c) rr)
             ((build-repeat 0 1 z c) e)
@@ -280,7 +280,7 @@
             (ra4 (build-and `(,r1 ,r2 ,r3) c))
             ((andR-res ra) (list rc rr))
             ((andR-res ra4) (list r1 r2 r3))
-            ((build-and null c) (build-neg z c))
+            ((build-and '() c) (build-neg z c))
             ((build-and `(,r1 ,z) c) z)
             ((build-and `(,r1) c) r1)
             ((build-neg r1 c) (build-neg r1 c))
@@ -308,7 +308,7 @@
              (r4 (build-or `(,r1 ,r2) c))
              (r5 (->re `(union ,r3-5 #\7) c))
              (r6 (->re #\6 c)))
-            ((flatten-res null orR? orR-res is:union c) null)
+            ((flatten-res '() orR? orR-res is:union c) '())
             ((isc (char-setR-chars (car (flatten-res `(,r1) orR? orR-res is:union c))))
              (isc (is:make-range (char->integer #\1))))
             ((isc (char-setR-chars (car (flatten-res `(,r4) orR? orR-res is:union c))))

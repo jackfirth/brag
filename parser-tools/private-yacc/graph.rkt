@@ -18,7 +18,7 @@
   (define N (make-hasheq))
   (define (get-N x) (hash-ref N x zero-thunk))
   (define (set-N x d) (hash-set! N x d))
-  (define stack null)
+  (define stack '())
   (define (push x) (set! stack (cons x stack)))
   (define (pop) (begin0 
                   (car stack)

@@ -95,7 +95,7 @@
   (define p (if (string? port-or-string)
                 (open-input-string port-or-string)
                 port-or-string))
-  (let loop ([acc null])
+  (let loop ([acc '()])
     (define-values (lex cat shape start end) (colorer p))
     (if (or (eq? 'eof cat) (eof-object? lex))
         (reverse acc)

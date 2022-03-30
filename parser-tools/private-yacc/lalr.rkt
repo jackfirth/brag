@@ -53,7 +53,7 @@
   (define rhs-l (vector-length rhs))
   (append (if (and (> rhs-l 0) (eq? nt (vector-ref rhs (sub1 rhs-l))))
               (list (item prod (sub1 rhs-l)))
-              null)
+              '())
           (let loop ([i (sub1 rhs-l)])
             (cond
               [(and (> i 0) 
@@ -63,7 +63,7 @@
                    (cons (item prod (sub1 i))
                          (loop (sub1 i)))
                    (loop (sub1 i)))]
-              [else null]))))
+              [else '()]))))
 
 ;; prod-list->items-for-include: grammar * prod list * non-term -> lr0-item list
 ;; return the list of all (B -> beta . nt gamma) such that  (B -> beta nt gamma) in prod-list
@@ -74,7 +74,7 @@
 ;; comput-includes: lr0-automaton * grammar -> (trans-key -> trans-key list)
 (define (compute-includes a g)
   (define num-states (send a get-num-states))
-  (define items-for-input-nt (make-vector (grammar-num-non-terms g) null))
+  (define items-for-input-nt (make-vector (grammar-num-non-terms g) '()))
   (for ([input-nt (in-list (grammar-non-terms g))])
        (vector-set! items-for-input-nt (non-term-index input-nt)
                     (prod-list->items-for-include g (grammar-all-prods g) input-nt)))
@@ -213,7 +213,7 @@
   (define get-f (lookup-tk-map results))
   (define set-f (add-tk-map results))
              
-  (define stack null)
+  (define stack '())
   (define (push x) (set! stack (cons x stack)))
   (define (pop) (begin0 
                   (car stack)

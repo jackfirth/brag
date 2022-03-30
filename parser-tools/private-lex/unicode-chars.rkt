@@ -9,7 +9,7 @@
 ;; get-chars-for-x : (nat -> bool) (listof (list nat nat bool)) -> (listof (cons nat nat))
 (define (get-chars-for char-x? mapped-chars)
   (cond
-    [(null? mapped-chars) null]
+    [(null? mapped-chars) '()]
     [else
      (define range (car mapped-chars))
      (define low (car range))

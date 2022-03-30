@@ -234,7 +234,7 @@
   ;; of productions that we don't know about yet. 
   (define (set-nullables prods)
     (cond
-      [(null? prods) null]
+      [(null? prods) '()]
       [(vector-ref nullable (gram-sym-index (prod-lhs (car prods))))
        (set-nullables (cdr prods))]
       [(vector-andmap (λ (nt) (vector-ref nullable (gram-sym-index nt))) (prod-rhs (car prods)))

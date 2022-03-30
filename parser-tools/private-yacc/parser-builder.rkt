@@ -57,7 +57,7 @@
                           (syntax-case assocs ()
                             (((__ TERM ...) ...)
                              (syntax->list #'(TERM ... ...)))))
-                     null)])
+                     '())])
     #`(when #f
         (let ((BIND void) ... (TMP void) ...)
           (void BOUND ... ... TERM-GROUP ... START ... END ... PREC ...)))))

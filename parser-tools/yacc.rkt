@@ -272,7 +272,7 @@
                  (let-values ([(new-stack args)
                                (reduce-stack stack 
                                              (runtime-reduce-rhs-length action)
-                                             null
+                                             '()
                                              src-pos)])
                    (define goto 
                      (runtime-goto-state

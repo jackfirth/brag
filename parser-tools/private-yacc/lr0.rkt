@@ -28,7 +28,7 @@
 (define (trans-key-list-remove-dups tkl)
   (let loop ([sorted (sort tkl trans-key<?)])
     (cond
-      [(null? sorted) null]
+      [(null? sorted) '()]
       [(null? (cdr sorted)) sorted]
       [(and (= (non-term-index (trans-key-gs (car sorted)))
                (non-term-index (trans-key-gs (cadr sorted))))
@@ -59,7 +59,7 @@
 (define (reverse-assoc assoc)
   (define reverse-hash (make-hash))
   (define (hash-table-add! ht k v)
-    (hash-set! ht k (cons v (hash-ref ht k (λ () null)))))
+    (hash-set! ht k (cons v (hash-ref ht k (λ () '())))))
   (for ([trans-key/kernel (in-list assoc)])
        (define tk (car trans-key/kernel))
        (hash-table-add! reverse-hash 
@@ -126,7 +126,7 @@
       (for*/list ([k (in-list k)]
                   [val (in-list (hash-ref (vector-ref reverse-transitions (kernel-index k))
                                           (gram-sym-symbol s)
-                                          (λ () null)))])
+                                          (λ () '())))])
                  val))))
 
 (define ((union comp<?) l1 l2)
@@ -171,14 +171,14 @@
                             (grammar-prods-for-non-term grammar nt))))
              (λ (nt) (list nt))
              (union non-term<?)
-             (λ () null)))
+             (λ () '())))
              
   ;; closure: LR1-item list -> LR1-item list
   ;; Creates a set of items containing i s.t. if A -> n.Xm is in it,
   ;; X -> .o is in it too.
   (define (LR0-closure i)
     (cond
-      [(null? i) null]
+      [(null? i) '()]
       [else
        (define next-gsym (sym-at-dot (car i)))
        (cond
@@ -192,8 +192,8 @@
          [else (cons (car i) (LR0-closure (cdr i)))])]))
   
   ;; maps trans-keys to kernels
-  (define automaton-term null)
-  (define automaton-non-term null)
+  (define automaton-term '())
+  (define automaton-non-term '())
              
   ;; keeps the kernels we have seen, so we can have a unique
   ;; list for each kernel
@@ -216,11 +216,11 @@
     (define (add-item! table i)
       (define gs (sym-at-dot i))
       (cond
-        [gs (define already (hash-ref table (gram-sym-symbol gs) (λ () null)))
+        [gs (define already (hash-ref table (gram-sym-symbol gs) (λ () '())))
             (unless (member i already)
               (hash-set! table (gram-sym-symbol gs) (cons i already)))]
         ((zero? (vector-length (prod-rhs (item-prod i))))
-         (define current (hash-ref epsilons ker (λ () null)))
+         (define current (hash-ref epsilons ker (λ () '())))
          (hash-set! epsilons ker (cons i current)))))
     
     ;; Group the items of the LR0 closure of the kernel
@@ -235,9 +235,9 @@
     (define is
       (let loop ([gsyms grammar-symbols])
         (cond
-          [(null? gsyms) null]
+          [(null? gsyms) '()]
           [else
-           (define items (hash-ref table (gram-sym-symbol (car gsyms)) (λ () null)))
+           (define items (hash-ref table (gram-sym-symbol (car gsyms)) (λ () '())))
            (cond
              [(null? items) (loop (cdr gsyms))]
              [else (cons (list (car gsyms) items)
@@ -278,7 +278,7 @@
                            k))
   (define new-kernels (make-queue))
   (let loop ([old-kernels startk]
-             [seen-kernels null])
+             [seen-kernels '()])
     (cond
       [(and (empty-queue? new-kernels) (null? old-kernels))
        (make-object lr0%  automaton-term automaton-non-term
@@ -290,16 +290,16 @@
 
 (struct q (f l) #:mutable)
 (define (empty-queue? q) (null? (q-f q)))
-(define (make-queue) (q null null))
+(define (make-queue) (q '() '()))
 
 (define (enq! q i)
   (cond
     [(empty-queue? q)
-     (let ([i (mcons i null)])
+     (let ([i (mcons i '())])
        (set-q-l! q i)
        (set-q-f! q i))]
     [else
-     (set-mcdr! (q-l q) (mcons i null))
+     (set-mcdr! (q-l q) (mcons i '()))
      (set-q-l! q (mcdr (q-l q)))]))
 
 

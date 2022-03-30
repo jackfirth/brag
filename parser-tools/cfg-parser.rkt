@@ -138,7 +138,7 @@
     (report-answer answer-key
                    max-depth
                    tasks
-                   null))
+                   '()))
   (let* ([tasks (queue-task tasks (λ (max-depth tasks)
                                     (parse-a gota-k faila-k max-depth tasks)))]
          [tasks (queue-task tasks (λ (max-depth tasks)
@@ -217,7 +217,7 @@
 
 ;; Reports an answer to multiple waiting threads:
 (define (report-answer-all answer-key max-depth ts val k)
-  (define v (hash-ref (tasks-multi-waits ts) answer-key (λ () null)))
+  (define v (hash-ref (tasks-multi-waits ts) answer-key (λ () '())))
   (hash-remove! (tasks-multi-waits ts) answer-key)
   (let ([ts (tasks (append (map (λ (a) (a val)) v)
                                    (tasks-active ts))
@@ -243,7 +243,7 @@
     (if multi?
         (hash-set! (tasks-multi-waits ts) answer-key
                    (cons wait (hash-ref (tasks-multi-waits ts) answer-key
-                                        (λ () null))))
+                                        (λ () '()))))
         (hash-set! (tasks-waits ts) answer-key wait))
     (let ([ts (tasks (tasks-active ts)
                              (tasks-active-back ts)
@@ -260,7 +260,7 @@
       (if (tasks-progress? ts)
           (swap-task max-depth
                      (tasks (reverse (tasks-active-back ts))
-                                 null
+                                 '()
                                  (tasks-waits ts)
                                  (tasks-multi-waits ts)
                                  (tasks-cache ts)
@@ -332,7 +332,7 @@
                                  [#,id-end-pos (at-tok-pos #'tok-end #'last-consumed-token)]
                                  #,@(if n-end-pos
                                         #`([#,n-end-pos (at-tok-pos #'tok-end #'last-consumed-token)])
-                                        null))
+                                        '()))
                       #,(loop (cdr pat) (add1 pos)))))
                 stream last-consumed-token depth 
                 #,(let ([cnt (for/sum ([item (in-list (cdr pat))])
@@ -357,7 +357,7 @@
                                       [#,id-end-pos (at-tok-pos #'tok-end #'stream-a)]
                                       #,@(if n-end-pos
                                              #`([#,n-end-pos (at-tok-pos #'tok-end #'stream-a)])
-                                             null))
+                                             '()))
                            #,(loop (cdr pat) (add1 pos)))))
                      (fail-k max-depth tasks)))])))))
 
@@ -444,7 +444,7 @@
                (report-answer-all answer-key
                                   max-depth
                                   tasks
-                                  null
+                                  '()
                                   (λ (max-depth tasks)
                                     (fail-k max-depth tasks))))
              (k end max-depth tasks new-got-k new-fail-k))]))))
@@ -476,21 +476,21 @@
                                                                 [(e-terminals-def? v)
                                                                  (for/list ([v (in-list (syntax->list (e-terminals-def-t v)))])
                                                                            (cons v #t))]
-                                                                [else null])))]
-                                                  [_else null])))]
+                                                                [else '()])))]
+                                                  [_else '()])))]
                            [all-end-toks (apply
                                           append
                                           (for/list ([clause (in-list clauses)])
                                                     (syntax-case clause (end)
                                                       [(end T ...)
                                                        (syntax->list #'(T ...))]
-                                                      [_else null])))])
+                                                      [_else '()])))])
                        (let loop ([clauses clauses]
                                   [cfg-start #f]
                                   [cfg-grammar #f]
                                   [cfg-error #f]
                                   [src-pos? #f]
-                                  [parser-clauses null])
+                                  [parser-clauses '()])
                          (if (null? clauses)
                              (values cfg-start
                                      cfg-grammar
@@ -554,7 +554,7 @@
                                                   (if (zero? (car l))
                                                       (append (cdr l) (loop (cdr pat)))
                                                       (cdr l)))
-                                                null)))))
+                                                '())))))
                                      (define new
                                        (filter (λ (id)
                                                  (andmap (λ (id2)

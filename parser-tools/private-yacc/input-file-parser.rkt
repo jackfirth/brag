@@ -28,7 +28,7 @@
   (define args
     (let get-args ([i i][rhs rhs])
       (cond
-        [(null? rhs) null]
+        [(null? rhs) '()]
         [else
          (define b (car rhs))
          (define name (if (hash-ref empty-table (syntax->datum (car rhs)) #f)
@@ -149,7 +149,7 @@
                     "Associativity must be left, right or nonassoc"
                     type))
                  (syntax->datum prec-decls)]))]
-      [#f null]
+      [#f '()]
       [_ (raise-syntax-error
           'parser-precedences
           "Precedence declaration must be of the form (precs (assoc term ...) ...) where assoc is left, right or nonassoc"

@@ -17,7 +17,7 @@
 ;; taking the derivative of r.
 (define (get-char-groups r found-negation)
   (cond
-    [(or (eq? r e) (eq? r z)) null]
+    [(or (eq? r e) (eq? r z)) '()]
     [(char-setR? r) (list r)]
     [(concatR? r)
      (if (re-nullable? (concatR-re1 r))
@@ -38,8 +38,8 @@
 (test-block ((c (make-cache))
              (r1 (->re #\1 c))
              (r2 (->re #\2 c)))
-            ((get-char-groups e #f) null)
-            ((get-char-groups z #f) null)
+            ((get-char-groups e #f) '())
+            ((get-char-groups z #f) '())
             ((get-char-groups r1 #f) (list r1))
             ((get-char-groups (->re `(concatenation ,r1 ,r2) c) #f)
              (list r1))
@@ -142,7 +142,7 @@
 (test-block ((c (make-cache))
              (r1 (->re #\1 c))
              (r2 (->re #\2 c)))
-            ((derive null (char->integer #\1) c) #f)
+            ((derive '() (char->integer #\1) c) #f)
             ((derive (list (cons r1 1) (cons r2 2)) (char->integer #\1) c)
              (list (cons e 1) (cons z 2)))
             ((derive (list (cons r1 1) (cons r2 2)) (char->integer #\3) c) #f))
@@ -163,7 +163,7 @@
              (r2 (->re #\b c))
              (b (list (cons z 1) (cons z 2) (cons z 3) (cons e 4) (cons z 5)))
              (a (list (cons r1 1) (cons r2 2))))
-            ((derive null (c->i #\a) c) #f)
+            ((derive '() (c->i #\a) c) #f)
             ((derive a (c->i #\a) c) (list (cons e 1) (cons z 2)))
             ((derive a (c->i #\b) c) (list (cons z 1) (cons e 2)))
             ((derive a (c->i #\c) c) #f)
@@ -194,7 +194,7 @@
 ;; derivative of the car of st.  Only one derivative per set need to be taken.
 (define (compute-chars st)
   (cond
-    [(null? st) null]
+    [(null? st) '()]
     [else
      (loc:partition (map char-setR-chars
                          (apply append (map (λ (x) (get-char-groups (car x) #f))
@@ -204,8 +204,8 @@
              (c->i char->integer)
              (r1 (->re `(char-range #\1 #\4) c))
              (r2 (->re `(char-range #\2 #\3) c)))
-            ((compute-chars null) null)
-            ((compute-chars (list (state null 1))) null)
+            ((compute-chars '()) '())
+            ((compute-chars (list (state '() 1))) '())
             ((map is:integer-set-contents
                   (compute-chars (list (state (list (cons r1 1) (cons r2 2)) 2))))
              (list (is:integer-set-contents (is:make-range (c->i #\2) (c->i #\3)))
@@ -229,7 +229,7 @@
          [start (state rs (get-state-number))])
     (cache (cons 'state (get-key rs)) (λ () start))
     (let loop ([old-states (list start)]
-               [new-states null]
+               [new-states '()]
                [all-states (list start)]
                [cs (compute-chars (list start))])
       (cond
@@ -248,7 +248,7 @@
                                                            (state-index (cdr t)))))))
                          < #:key car))]
         [(null? old-states)
-         (loop new-states null all-states (compute-chars new-states))]
+         (loop new-states '() all-states (compute-chars new-states))]
         [(null? cs)
          (loop (cdr old-states) new-states all-states (compute-chars (cdr old-states)))]
         [else
@@ -267,7 +267,7 @@
                          s
                          (cons (cons c new-state)
                                (hash-ref transitions s
-                                         (λ () null))))
+                                         (λ () '()))))
               (cond
                 [new-state?
                  (loop old-states (cons new-state new-states) new-all-states (cdr cs))]

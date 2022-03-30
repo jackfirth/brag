@@ -35,7 +35,7 @@
   (define translated-patterns
     (let loop ([primitive-patterns (syntax->list a-clause)])
       (cond
-        [(empty? primitive-patterns) null]
+        [(empty? primitive-patterns) '()]
         [else
          (cons (syntax-case (first primitive-patterns) (id lit token inferred-id)
                  [(id val)
@@ -104,7 +104,7 @@
 ;; of explicit token types, though the user is not allow to express it themselves.
 (define (rules-collect-token-types rules)
   (define-values (implicit explicit)
-    (for/fold ([implicit null]
+    (for/fold ([implicit '()]
                [explicit (list (datum->syntax (first rules) 'EOF))])
               ([a-rule (in-list rules)])
       (syntax-case a-rule (rule)
@@ -187,7 +187,7 @@
 (define (rule-collect-used-ids a-rule)
   (syntax-case a-rule (rule)
     [(rule id a-pattern)
-     (pattern-collect-used-ids #'a-pattern null)]))
+     (pattern-collect-used-ids #'a-pattern '())]))
 
 ;; pattern-collect-used-ids: pattern-stx (listof identifier) -> (listof identifier)
 ;; Returns a flat list of rule identifiers referenced in the pattern.
@@ -228,7 +228,7 @@
     (make-free-id-table (for/list ([a-rule (in-list rules)])
                           (cons (rule-id a-rule) (sat:make-and)))))
   
-  (define leaves null)
+  (define leaves '())
   
   (define (make-leaf)
     (define a-leaf (sat:make-and))
