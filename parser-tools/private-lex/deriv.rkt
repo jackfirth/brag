@@ -263,11 +263,7 @@
                                        (set! new-state? #t)
                                        (state new-re (get-state-number))))]
                    [new-all-states (if new-state? (cons new-state all-states) all-states)])
-              (hash-set! transitions 
-                         s
-                         (cons (cons c new-state)
-                               (hash-ref transitions s
-                                         '())))
+              (hash-update! transitions s (λ (v) (cons (cons c new-state) v)) '())
               (cond
                 [new-state?
                  (loop old-states (cons new-state new-states) new-all-states (cdr cs))]
