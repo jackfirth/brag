@@ -137,6 +137,7 @@
 
 ;; ------------------------- Grammar ------------------------------
 
+
 ;; prods: production list list
 ;; where there is one production list per non-term
 ;; init-prods: production list
@@ -153,6 +154,7 @@
                  num-non-terms
                  nt->prods
                  nullable-non-terms))
+
 
 (define (make-grammar #:prods prods
                       #:init-prods init-prods
@@ -194,6 +196,35 @@
            nt->prods
            nullable-non-terms))
 
+
+(define (grammar-prods-for-non-term g nt)
+  (vector-ref (grammar-nt->prods g) (non-term-index nt)))
+
+
+(define (grammar-nullable-non-term? g nt)
+  (vector-ref (grammar-nullable-non-terms g) (non-term-index nt)))
+
+
+(define (grammar-nullable-after-dot? g item)
+  (define rhs (prod-rhs (item-prod item)))
+  (define prod-length (vector-length rhs))
+  (let loop ((i (item-dot-pos item)))
+    (cond
+      [(< i prod-length)
+       (and (non-term? (vector-ref rhs i))
+            (grammar-nullable-non-term? g (vector-ref rhs i))
+            (loop (add1 i)))]
+      [(= i prod-length)])))
+
+
+(define ((grammar-nullable-non-term-thunk g) nt)
+  (grammar-nullable-non-term? g nt))
+
+
+(define ((grammar-nullable-after-dot?-thunk g) item)
+  (grammar-nullable-after-dot? g item))
+
+
 (define grammar%
   (class object%
     (super-instantiate ())
@@ -210,8 +241,7 @@
     (define/public (get-num-terms) (grammar-num-terms backing-struct))
     (define/public (get-num-non-terms) (grammar-num-non-terms backing-struct))
       
-    (define/public (get-prods-for-non-term nt)
-      (vector-ref (grammar-nt->prods backing-struct) (non-term-index nt)))
+    (define/public (get-prods-for-non-term nt) (grammar-prods-for-non-term backing-struct nt))
     (define/public (get-prods) (grammar-all-prods backing-struct))
     (define/public (get-init-prods) (grammar-init-prods backing-struct))
       
@@ -220,25 +250,17 @@
       
     (define/public (get-num-prods) (grammar-num-prods backing-struct))
     (define/public (get-end-terms) (grammar-end-terms backing-struct))
-      
+
     (define/public (nullable-non-term? nt)
-      (vector-ref (grammar-nullable-non-terms backing-struct) (non-term-index nt)))
+      (grammar-nullable-non-term? backing-struct nt))
 
     (define/public (nullable-after-dot? item)
-      (define rhs (prod-rhs (item-prod item)))
-      (define prod-length (vector-length rhs))
-      (let loop ((i (item-dot-pos item)))
-        (cond
-          [(< i prod-length)
-           (and (non-term? (vector-ref rhs i))
-                (nullable-non-term? (vector-ref rhs i))
-                (loop (add1 i)))]
-          [(= i prod-length)])))
+      (grammar-nullable-after-dot? backing-struct item))
       
     (define/public (nullable-non-term-thunk)
-      (λ (nt) (nullable-non-term? nt)))
+      (grammar-nullable-non-term-thunk backing-struct))
     (define/public (nullable-after-dot?-thunk)
-      (λ (item) (nullable-after-dot? item)))))
+      (grammar-nullable-after-dot?-thunk backing-struct))))
 
   
 ;; nullable: production list * int -> non-term set
