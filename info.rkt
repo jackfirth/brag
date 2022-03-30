@@ -10,6 +10,7 @@
 
 
 (define deps '(["base" #:version "6.3"]
+               "rebellion"
                "syntax-color-lib"))
 
 
