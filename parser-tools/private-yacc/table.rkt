@@ -27,22 +27,20 @@
   
 ;; group-table : parse-table -> grouped-parse-table
 (define (group-table table)
-  (list->vector
-   (for/list ([state-entry (in-list (vector->list table))])
-             (define ht (make-hasheq))
-             (for* ([gs/actions (in-list state-entry)]
-                    [group (in-value (hash-ref ht (car gs/actions) (λ () null)))]
-                    #:unless (member (cdr gs/actions) group))
-                   (hash-set! ht (car gs/actions) (cons (cdr gs/actions) group)))
-             (hash-map ht cons))))
+  (for/vector ([state-entry (in-list (vector->list table))])
+    (define ht (make-hasheq))
+    (for* ([gs/actions (in-list state-entry)]
+           [group (in-value (hash-ref ht (car gs/actions) (λ () null)))]
+           #:unless (member (cdr gs/actions) group))
+      (hash-set! ht (car gs/actions) (cons (cdr gs/actions) group)))
+    (hash-map ht cons)))
   
 ;; table-map : (vectorof (listof (cons/c gram-sym? X))) (gram-sym? X -> Y) ->
 ;;             (vectorof (listof (cons/c gram-sym? Y)))
 (define (table-map f table)
-  (list->vector
-   (for/list ([state-entry (in-list (vector->list table))])
-             (for/list ([gs/X (in-list state-entry)])
-                       (cons (car gs/X) (f (car gs/X) (cdr gs/X)))))))
+  (for/vector ([state-entry (in-list (vector->list table))])
+    (for/list ([gs/X (in-list state-entry)])
+      (cons (car gs/X) (f (car gs/X) (cdr gs/X))))))
   
 (define (bit-vector-for-each f bv)
   (let loop ([bv bv] [number 0])
