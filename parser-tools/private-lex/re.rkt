@@ -81,7 +81,8 @@
     [`(intersection ,rs ...)
      (build-and (flatten-res (map (λ (r) (->re r cache)) rs)
                              andR? andR-res (λ (a b)
-                                              (let-values (((i _ __) (loc:split a b))) i))
+                                              (define-values (i _ __) (loc:split a b))
+                                              i)
                              cache)
                 cache)]
     [`(complement ,r) (build-neg (->re r cache) cache)]
@@ -316,9 +317,9 @@
                                                      orR? orR-res is:union c))))
              (isc (is:make-range (char->integer #\1) (char->integer #\7))))
             ((flatten-res `(,r1 ,r2) andR? andR-res (λ (x y)
-                                                      (let-values (((i _ __)
-                                                                    (is:split x y)))
-                                                        i))
+                                                      (define-values (i _ __)
+                                                        (is:split x y))
+                                                      i)
                           c)
              (list z)))
   

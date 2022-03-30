@@ -78,14 +78,14 @@
               (for ([sym (in-list symbols)]
                     #:unless (identifier? sym))
                 (raise-syntax-error #f "End token must be a symbol" stx sym))
-              (let ([d (duplicate-list? (map syntax-e symbols))])
-                (when d
-                  (raise-syntax-error #f (format "Duplicate end token definition for ~a" d) stx arg))
-                (when (null? symbols)
-                  (raise-syntax-error #f "end declaration must contain at least 1 token" stx arg))
-                (when end
-                  (raise-syntax-error #f "Multiple end declarations" stx))
-                (set! end symbols)))]
+              (define d (duplicate-list? (map syntax-e symbols)))
+              (when d
+                (raise-syntax-error #f (format "Duplicate end token definition for ~a" d) stx arg))
+              (when (null? symbols)
+                (raise-syntax-error #f "end declaration must contain at least 1 token" stx arg))
+              (when end
+                (raise-syntax-error #f "Multiple end declarations" stx))
+              (set! end symbols))]
            [(precs DECLS ...)
             (if precs
                 (raise-syntax-error #f "Multiple precs declarations" stx)
@@ -113,38 +113,38 @@
          (raise-syntax-error #f "missing end declaration" stx))
        (unless start
          (raise-syntax-error #f "missing start declaration" stx))
-       (let-values ([(table all-term-syms actions check-syntax-fix)
-                     (build-parser (if debug debug "")
-                                   src-pos
-                                   suppress
-                                   tokens
-                                   start
-                                   end
-                                   precs
-                                   grammar)])
-         (when (and yacc-output (not (string=? yacc-output "")))
-           (with-handlers [(exn:fail:filesystem?
-                            (λ (e) (eprintf "Cannot write yacc-output to file \"~a\"\n" yacc-output)))]
-             (call-with-output-file yacc-output
-               (λ (port)
-                 (display-yacc (syntax->datum grammar) 
-                               tokens 
-                               (map syntax->datum start)
-                               (and precs (syntax->datum precs))
-                               port))
-               #:exists 'truncate)))
-         (with-syntax ([check-syntax-fix check-syntax-fix]
-                       [err error]
-                       [ends end]
-                       [starts start]
-                       [debug debug]
-                       [table (convert-parse-table table)]
-                       [all-term-syms all-term-syms]
-                       [actions actions]
-                       [src-pos src-pos])
-           #'(begin
-               check-syntax-fix
-               (parser-body debug err (quote starts) (quote ends) table all-term-syms actions src-pos)))))]
+       (define-values (table all-term-syms actions check-syntax-fix)
+         (build-parser (if debug debug "")
+                       src-pos
+                       suppress
+                       tokens
+                       start
+                       end
+                       precs
+                       grammar))
+       (when (and yacc-output (not (string=? yacc-output "")))
+         (with-handlers [(exn:fail:filesystem?
+                          (λ (e) (eprintf "Cannot write yacc-output to file \"~a\"\n" yacc-output)))]
+           (call-with-output-file yacc-output
+             (λ (port)
+               (display-yacc (syntax->datum grammar) 
+                             tokens 
+                             (map syntax->datum start)
+                             (and precs (syntax->datum precs))
+                             port))
+             #:exists 'truncate)))
+       (with-syntax ([check-syntax-fix check-syntax-fix]
+                     [err error]
+                     [ends end]
+                     [starts start]
+                     [debug debug]
+                     [table (convert-parse-table table)]
+                     [all-term-syms all-term-syms]
+                     [actions actions]
+                     [src-pos src-pos])
+         #'(begin
+             check-syntax-fix
+             (parser-body debug err (quote starts) (quote ends) table all-term-syms actions src-pos))))]
     [_ (raise-syntax-error #f "parser must have the form (parser args ...)" stx)]))
   
 (define (reduce-stack stack num ret-vals src-pos)
@@ -237,31 +237,29 @@
                                      stack)]
                               [else
                                ;; (printf "discard input:~a\n" tok)
-                               (let-values ([(tok val start-pos end-pos)
-                                             (extract (get-token))])
-                                 (remove-input tok val start-pos end-pos))])))))
+                               (call-with-values (λ () (extract (get-token))) remove-input)])))))
               (let remove-states ()
-                (let ([a (find-action stack 'error #f start-pos end-pos)])
-                  (cond
-                    [(runtime-shift? a)
-                     ;; (printf "shift:~a\n" (runtime-shift-state a))
-                     (set! stack 
-                           (cons
-                            (stack-frame (runtime-shift-state a) 
-                                              #f 
-                                              start-pos
-                                              end-pos)
-                            stack))
-                     (remove-input tok val start-pos end-pos)]
-                    [else
-                     ;; (printf "discard state:~a\n" (car stack))
-                     (cond
-                       [(< (length stack) 2)
-                        (raise-read-error "parser: Cannot continue after error"
-                                          #f #f #f #f #f)]
-                       [else
-                        (set! stack (cdr stack))
-                        (remove-states)])])))))
+                (define a (find-action stack 'error #f start-pos end-pos))
+                (cond
+                  [(runtime-shift? a)
+                   ;; (printf "shift:~a\n" (runtime-shift-state a))
+                   (set! stack 
+                         (cons
+                          (stack-frame (runtime-shift-state a) 
+                                       #f 
+                                       start-pos
+                                       end-pos)
+                          stack))
+                   (remove-input tok val start-pos end-pos)]
+                  [else
+                   ;; (printf "discard state:~a\n" (car stack))
+                   (cond
+                     [(< (length stack) 2)
+                      (raise-read-error "parser: Cannot continue after error"
+                                        #f #f #f #f #f)]
+                     [else
+                      (set! stack (cdr stack))
+                      (remove-states)])]))))
             
           (define (find-action stack tok val start-pos end-pos)
             (unless (hash-ref all-term-syms tok #f)
@@ -278,55 +276,55 @@
               (error 'get-token "expected a nullary procedure, got ~e" get-token))
             (let parsing-loop ([stack (make-empty-stack start-number)]
                                [ip (get-token)])
-              (let-values ([(tok val start-pos end-pos) (extract ip)])
-                (let ([action (find-action stack tok val start-pos end-pos)])
-                  (cond
-                    [(runtime-shift? action)
-                     ;; (printf "shift:~a\n" (runtime-shift-state action))
-                     (parsing-loop (cons (stack-frame (runtime-shift-state action)
-                                                           val
-                                                           start-pos
-                                                           end-pos)
-                                         stack)
-                                   (get-token))]
-                    [(runtime-reduce? action)
-                     ;; (printf "reduce:~a\n" (runtime-reduce-prod-num action))
-                     (let-values ([(new-stack args)
-                                   (reduce-stack stack 
-                                                 (runtime-reduce-rhs-length action)
-                                                 null
-                                                 src-pos)])
-                       (let ([goto 
-                              (runtime-goto-state
-                               (hash-ref 
-                                (vector-ref table (stack-frame-state (car new-stack)))
-                                (runtime-reduce-lhs action)))])
-                         (parsing-loop 
-                          (cons
-                           (if src-pos
-                               (stack-frame
-                                goto 
-                                (apply (vector-ref actions (runtime-reduce-prod-num action)) args)
-                                (if (null? args) start-pos (cadr args))
-                                (if (null? args) 
-                                    end-pos
-                                    (list-ref args (- (* (runtime-reduce-rhs-length action) 3) 1))))
-                               (stack-frame
-                                goto 
-                                (apply (vector-ref actions (runtime-reduce-prod-num action)) args)
-                                #f
-                                #f))
-                           new-stack)
-                          ip)))]
-                    [(runtime-accept? action)
-                     ;; (printf "accept\n")
-                     (stack-frame-value (car stack))]
-                    [else 
+              (define-values (tok val start-pos end-pos) (extract ip))
+              (define action (find-action stack tok val start-pos end-pos))
+              (cond
+                [(runtime-shift? action)
+                 ;; (printf "shift:~a\n" (runtime-shift-state action))
+                 (parsing-loop (cons (stack-frame (runtime-shift-state action)
+                                                  val
+                                                  start-pos
+                                                  end-pos)
+                                     stack)
+                               (get-token))]
+                [(runtime-reduce? action)
+                 ;; (printf "reduce:~a\n" (runtime-reduce-prod-num action))
+                 (let-values ([(new-stack args)
+                               (reduce-stack stack 
+                                             (runtime-reduce-rhs-length action)
+                                             null
+                                             src-pos)])
+                   (define goto 
+                     (runtime-goto-state
+                      (hash-ref 
+                       (vector-ref table (stack-frame-state (car new-stack)))
+                       (runtime-reduce-lhs action))))
+                   (parsing-loop 
+                    (cons
                      (if src-pos
-                         (err #t tok val start-pos end-pos)
-                         (err #t tok val))
-                     (parsing-loop (fix-error stack tok val start-pos end-pos get-token)
-                                   (get-token))]))))))
+                         (stack-frame
+                          goto 
+                          (apply (vector-ref actions (runtime-reduce-prod-num action)) args)
+                          (if (null? args) start-pos (cadr args))
+                          (if (null? args) 
+                              end-pos
+                              (list-ref args (- (* (runtime-reduce-rhs-length action) 3) 1))))
+                         (stack-frame
+                          goto 
+                          (apply (vector-ref actions (runtime-reduce-prod-num action)) args)
+                          #f
+                          #f))
+                     new-stack)
+                    ip))]
+                [(runtime-accept? action)
+                 ;; (printf "accept\n")
+                 (stack-frame-value (car stack))]
+                [else 
+                 (if src-pos
+                     (err #t tok val start-pos end-pos)
+                     (err #t tok val))
+                 (parsing-loop (fix-error stack tok val start-pos end-pos get-token)
+                               (get-token))]))))
     (cond
       [(null? (cdr starts)) (make-parser 0)]
       [else

@@ -36,86 +36,86 @@
   (let loop ([stx stx]
              ;; seen-lex-abbrevs: id-table
              [seen-lex-abbrevs (make-immutable-free-id-table)])
-    (let ([recur (λ (s)
-                   (loop (syntax-rearm s stx)
-                         seen-lex-abbrevs))]
-          [recur/abbrev (λ (s id)
-                          (loop (syntax-rearm s stx)
-                                (free-id-table-set seen-lex-abbrevs id id)))])
-      (syntax-case (disarm stx) (repetition union intersection complement concatenation
-                                            char-range char-complement)
-        [_
-         (identifier? stx)
-         (let ([expansion (syntax-local-value/record stx (λ (v) #t))])
-           (unless (lex-abbrev? expansion)
-             (raise-syntax-error 'regular-expression
-                                 "undefined abbreviation"
-                                 stx))
-           ;; Check for cycles.
-           (when (free-id-table-ref seen-lex-abbrevs stx (λ () #f))
-             (raise-syntax-error 'regular-expression
-                                 "illegal lex-abbrev cycle detected"
-                                 stx
-                                 #f
-                                 (list (free-id-table-ref seen-lex-abbrevs stx))))
-           (recur/abbrev ((lex-abbrev-get-abbrev expansion)) stx))]
-        [_
-         (or (char? (syntax-e stx)) (string? (syntax-e stx)))
-         (syntax-e stx)]
-        [(repetition ARG ...)
-         (let ([arg-list (syntax->list #'(ARG ...))])
-           (unless (= 3 (length arg-list))
-             (bad-args stx 2))
-           (define low (syntax-e (car arg-list)))
-           (define high (syntax-e (cadr arg-list)))
-           (define re (caddr arg-list))
-           (unless (and (number? low) (exact? low) (integer? low) (>= low 0))
-             (raise-syntax-error #f "not a non-negative exact integer" stx (car arg-list)))
-           (unless (or (and (number? high) (exact? high) (integer? high) (>= high 0))
-                       (eqv? high +inf.0))
-             (raise-syntax-error #f "not a non-negative exact integer or +inf.0" stx (cadr arg-list)))
-           (unless (<= low high)
-             (raise-syntax-error #f "the first argument is not less than or equal to the second argument" stx))
-           `(repetition ,low ,high ,(recur re)))]
-        [(union RE ...)
-         `(union ,@(map recur (syntax->list #'(RE ...))))]
-        [(intersection RE ...)
-         `(intersection ,@(map recur (syntax->list #'(RE ...))))]
-        [(complement RE ...)
-         (let ([re-list (syntax->list #'(RE ...))])
-           (unless (= 1 (length re-list))
-             (bad-args stx 1))
-           `(complement ,(recur (car re-list))))]
-        [(concatenation RE ...)
-         `(concatenation ,@(map recur (syntax->list #'(RE ...))))]
-        [(char-range ARG ...)
-         (let ((arg-list (syntax->list #'(ARG ...))))
-           (unless (= 2 (length arg-list))
-             (bad-args stx 2))
-           (let ([i1 (char-range-arg (car arg-list) stx)]
-                 [i2 (char-range-arg (cadr arg-list) stx)])
-             (if (<= i1 i2)
-                 `(char-range ,(integer->char i1) ,(integer->char i2))
-                 (raise-syntax-error #f "the first argument does not precede or equal second argument" stx))))]
-        [(char-complement ARG ...)
-         (let ([arg-list (syntax->list #'(ARG ...))])
-           (unless (= 1 (length arg-list))
-             (bad-args stx 1))
-           (define parsed (recur (car arg-list)))
-           (unless (char-set? parsed)
-             (raise-syntax-error #f "not a character set" stx (car arg-list)))
-           `(char-complement ,parsed))]
-        ((OP form ...)
-         (identifier? #'OP)
-         (let* ([expansion (syntax-local-value/record #'OP (λ (v) #t))])
-           (cond
-             [(lex-trans? expansion)
-              (recur ((lex-trans-f expansion) (disarm stx)))]
-             [expansion
-              (raise-syntax-error 'regular-expression "not a lex-trans" stx)]
-             [else
-              (raise-syntax-error 'regular-expression "undefined operator" stx)])))
-        [_ (raise-syntax-error 'regular-expression "not a char, string, identifier, or (op args ...)" stx)]))))
+    (define (recur s)
+      (loop (syntax-rearm s stx)
+            seen-lex-abbrevs))
+    (define (recur/abbrev s id)
+      (loop (syntax-rearm s stx)
+            (free-id-table-set seen-lex-abbrevs id id)))
+    (syntax-case (disarm stx) (repetition union intersection complement concatenation
+                                          char-range char-complement)
+      [_
+       (identifier? stx)
+       (let ([expansion (syntax-local-value/record stx (λ (v) #t))])
+         (unless (lex-abbrev? expansion)
+           (raise-syntax-error 'regular-expression
+                               "undefined abbreviation"
+                               stx))
+         ;; Check for cycles.
+         (when (free-id-table-ref seen-lex-abbrevs stx (λ () #f))
+           (raise-syntax-error 'regular-expression
+                               "illegal lex-abbrev cycle detected"
+                               stx
+                               #f
+                               (list (free-id-table-ref seen-lex-abbrevs stx))))
+         (recur/abbrev ((lex-abbrev-get-abbrev expansion)) stx))]
+      [_
+       (or (char? (syntax-e stx)) (string? (syntax-e stx)))
+       (syntax-e stx)]
+      [(repetition ARG ...)
+       (let ([arg-list (syntax->list #'(ARG ...))])
+         (unless (= 3 (length arg-list))
+           (bad-args stx 2))
+         (define low (syntax-e (car arg-list)))
+         (define high (syntax-e (cadr arg-list)))
+         (define re (caddr arg-list))
+         (unless (and (number? low) (exact? low) (integer? low) (>= low 0))
+           (raise-syntax-error #f "not a non-negative exact integer" stx (car arg-list)))
+         (unless (or (and (number? high) (exact? high) (integer? high) (>= high 0))
+                     (eqv? high +inf.0))
+           (raise-syntax-error #f "not a non-negative exact integer or +inf.0" stx (cadr arg-list)))
+         (unless (<= low high)
+           (raise-syntax-error #f "the first argument is not less than or equal to the second argument" stx))
+         `(repetition ,low ,high ,(recur re)))]
+      [(union RE ...)
+       `(union ,@(map recur (syntax->list #'(RE ...))))]
+      [(intersection RE ...)
+       `(intersection ,@(map recur (syntax->list #'(RE ...))))]
+      [(complement RE ...)
+       (let ([re-list (syntax->list #'(RE ...))])
+         (unless (= 1 (length re-list))
+           (bad-args stx 1))
+         `(complement ,(recur (car re-list))))]
+      [(concatenation RE ...)
+       `(concatenation ,@(map recur (syntax->list #'(RE ...))))]
+      [(char-range ARG ...)
+       (let ((arg-list (syntax->list #'(ARG ...))))
+         (unless (= 2 (length arg-list))
+           (bad-args stx 2))
+         (define i1 (char-range-arg (car arg-list) stx))
+         (define i2 (char-range-arg (cadr arg-list) stx))
+         (if (<= i1 i2)
+             `(char-range ,(integer->char i1) ,(integer->char i2))
+             (raise-syntax-error #f "the first argument does not precede or equal second argument" stx)))]
+      [(char-complement ARG ...)
+       (let ([arg-list (syntax->list #'(ARG ...))])
+         (unless (= 1 (length arg-list))
+           (bad-args stx 1))
+         (define parsed (recur (car arg-list)))
+         (unless (char-set? parsed)
+           (raise-syntax-error #f "not a character set" stx (car arg-list)))
+         `(char-complement ,parsed))]
+      ((OP form ...)
+       (identifier? #'OP)
+       (let* ([expansion (syntax-local-value/record #'OP (λ (v) #t))])
+         (cond
+           [(lex-trans? expansion)
+            (recur ((lex-trans-f expansion) (disarm stx)))]
+           [expansion
+            (raise-syntax-error 'regular-expression "not a lex-trans" stx)]
+           [else
+            (raise-syntax-error 'regular-expression "undefined operator" stx)])))
+      [_ (raise-syntax-error 'regular-expression "not a char, string, identifier, or (op args ...)" stx)])))
        
 
   

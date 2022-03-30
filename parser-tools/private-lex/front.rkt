@@ -10,12 +10,10 @@
   
 (provide build-lexer)
   
-(define-syntax time-label
-  (syntax-rules ()
-    ((_ l e ...)
-     (begin
-       (printf "~a: " l)
-       (time (begin e ...))))))
+(define-syntax-rule (time-label l e ...)
+  (begin
+    (printf "~a: " l)
+    (time (begin e ...))))
   
 ;; A table is either
 ;; - (vector-of (union #f nat))
@@ -89,7 +87,7 @@
        (vector-set! no-look (car trans) #f))
   no-look)
       
-(test-block ((d1 (dfa 1 1 (list) (list)))
+(test-block ((d1 (dfa 1 1 '() '()))
              (d2 (dfa 4 1 (list (cons 2 2) (cons 3 3))
                            (list (cons 1 (list (cons (is:make-range 49 50) 1)
                                                (cons (is:make-range 51) 2)))

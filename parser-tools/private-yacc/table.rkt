@@ -147,13 +147,13 @@
   (define RR-conflicts 0)
   (define table (table-map
                  (λ (gs actions)
-                   (let-values ([(action SR? RR?)
-                                 (resolve-conflict actions)])
-                     (when SR?
-                       (set! SR-conflicts (add1 SR-conflicts)))
-                     (when RR?
-                       (set! RR-conflicts (add1 RR-conflicts)))
-                     action))
+                   (define-values (action SR? RR?)
+                     (resolve-conflict actions))
+                   (when SR?
+                     (set! SR-conflicts (add1 SR-conflicts)))
+                   (when RR?
+                     (set! RR-conflicts (add1 RR-conflicts)))
+                   action)
                  grouped-table))
   (unless suppress
     (when (> SR-conflicts 0)
@@ -237,15 +237,11 @@
                  (bit-vector-for-each 
                   (λ (term-index)
                     (unless (start-item? item)
-                      (let ((r (hash-ref reduce-cache item-prod
-                                         (λ ()
-                                           (let ((r (reduce item-prod)))
-                                             (hash-set! reduce-cache item-prod r)
-                                             r)))))
-                        (table-add! table
-                                    (kernel-index state)
-                                    (vector-ref term-vector term-index)
-                                    r))))
+                      (define r (hash-ref! reduce-cache item-prod (λ () (reduce item-prod))))
+                      (table-add! table
+                                  (kernel-index state)
+                                  (vector-ref term-vector term-index)
+                                  r)))
                   (get-lookahead state item-prod))))))
 
   (define grouped-table (resolve-prec-conflicts table))

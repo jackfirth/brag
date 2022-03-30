@@ -279,14 +279,12 @@
   (printf "number of states: ~a\n" (dfa-num-states x))
   (printf "start state: ~a\n" (dfa-start-state x))
   (printf "final states: ~a\n" (map car (dfa-final-states/actions x)))
-  (for-each (λ (trans)
-              (printf "state: ~a\n" (car trans))
-              (for-each (λ (rule)
-                          (printf "  -~a-> ~a\n"
-                                  (is:integer-set-contents (car rule))
-                                  (cdr rule)))
-                        (cdr trans)))
-            (dfa-transitions x)))
+  (for ([trans (in-list (dfa-transitions x))])
+    (printf "state: ~a\n" (car trans))
+    (for ([rule (in-list (cdr trans))])
+      (printf "  -~a-> ~a\n"
+              (is:integer-set-contents (car rule))
+              (cdr rule)))))
  
 (define (build-test-dfa rs)
   (define c (make-cache))

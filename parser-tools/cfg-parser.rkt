@@ -70,13 +70,14 @@
   (let loop ()
     (when (ormap-all #f
                      (λ (nt pats)
-                       (let ([old (bound-identifier-mapping-get nts nt)])
-                         (let ([new (proc nt pats old)])
-                           (if (equal? old new)
-                               #f
-                               (begin
-                                 (bound-identifier-mapping-put! nts nt new)
-                                 #t)))))
+                       (define old (bound-identifier-mapping-get nts nt))
+                       (define new (proc nt pats old))
+                       (cond
+                         [(equal? old new)
+                          #f]
+                         [else
+                          (bound-identifier-mapping-put! nts nt new)
+                          #t]))
                      nt-ids patss)
       (loop))))
 
@@ -334,13 +335,11 @@
                                         null))
                       #,(loop (cdr pat) (add1 pos)))))
                 stream last-consumed-token depth 
-                #,(let ([cnt (apply +
-                                    (map (λ (item)
-                                           (cond
-                                             [(bound-identifier-mapping-get nts item (λ () #f))
-                                              => (λ (l) (car l))]
-                                             [else 1]))
-                                         (cdr pat)))])
+                #,(let ([cnt (for/sum ([item (in-list (cdr pat))])
+                               (cond
+                                 [(bound-identifier-mapping-get nts item (λ () #f))
+                                  => (λ (l) (car l))]
+                                 [else 1]))])
                     #`(- end #,cnt))
                 success-k fail-k max-depth tasks)]
             [else
@@ -523,56 +522,56 @@
                                   (nt-fixpoint
                                    nts
                                    (λ (nt pats old-list)
-                                     (let ([new-cnt
-                                            (apply min (for/list ([pat (in-list pats)])
-                                                                 (for/sum ([elem (in-list pat)])
-                                                                          (car (bound-identifier-mapping-get
-                                                                                nts elem  (λ () (list 1)))))))])
-                                       (if (new-cnt . > . (car old-list))
-                                           (cons new-cnt (cdr old-list))
-                                           old-list)))
+                                     (define new-cnt
+                                       (apply min (for/list ([pat (in-list pats)])
+                                                    (for/sum ([elem (in-list pat)])
+                                                      (car (bound-identifier-mapping-get
+                                                            nts elem  (λ () (list 1))))))))
+                                     (if (new-cnt . > . (car old-list))
+                                         (cons new-cnt (cdr old-list))
+                                         old-list))
                                    nt-ids patss)
                                   ;; Compute set of toks that must appear at the beginning
                                   ;;  for a non-terminal
                                   (nt-fixpoint
                                    nts
                                    (λ (nt pats old-list)
-                                     (let ([new-list
-                                            (apply
-                                             append
-                                             (for/list ([pat (in-list pats)])
-                                                       (let loop ([pat pat])
-                                                         (if (pair? pat)
-                                                             (let ([l (bound-identifier-mapping-get 
-                                                                       nts
-                                                                       (car pat)
-                                                                       (λ ()
-                                                                         (list 1 (map-token toks (car pat)))))])
-                                                               ;; If the non-terminal can match 0 things,
-                                                               ;;  then it might match something from the
-                                                               ;;  next pattern element. Otherwise, it must
-                                                               ;;  match the first element:
-                                                               (if (zero? (car l))
-                                                                   (append (cdr l) (loop (cdr pat)))
-                                                                   (cdr l)))
-                                                             null))))])
-                                       (let ([new (filter (λ (id)
-                                                            (andmap (λ (id2)
-                                                                      (not (eq? id id2)))
-                                                                    (cdr old-list)))
-                                                          new-list)])
-                                         (if (pair? new)
-                                             ;; Drop dups in new list:
-                                             (let ([new (let loop ([new new])
-                                                          (if (null? (cdr new))
-                                                              new
-                                                              (if (ormap (λ (id)
-                                                                           (eq? (car new) id))
-                                                                         (cdr new))
-                                                                  (loop (cdr new))
-                                                                  (cons (car new) (loop (cdr new))))))])
-                                               (cons (car old-list) (append new (cdr old-list))))
-                                             old-list))))
+                                     (define new-list
+                                       (apply
+                                        append
+                                        (for/list ([pat (in-list pats)])
+                                          (let loop ([pat pat])
+                                            (if (pair? pat)
+                                                (let ([l (bound-identifier-mapping-get 
+                                                          nts
+                                                          (car pat)
+                                                          (λ ()
+                                                            (list 1 (map-token toks (car pat)))))])
+                                                  ;; If the non-terminal can match 0 things,
+                                                  ;;  then it might match something from the
+                                                  ;;  next pattern element. Otherwise, it must
+                                                  ;;  match the first element:
+                                                  (if (zero? (car l))
+                                                      (append (cdr l) (loop (cdr pat)))
+                                                      (cdr l)))
+                                                null)))))
+                                     (define new
+                                       (filter (λ (id)
+                                                 (andmap (λ (id2)
+                                                           (not (eq? id id2)))
+                                                         (cdr old-list)))
+                                               new-list))
+                                     (if (pair? new)
+                                         ;; Drop dups in new list:
+                                         (let ([new (let loop ([new new])
+                                                      (cond
+                                                        [(null? (cdr new)) new]
+                                                        [(ormap (λ (id)
+                                                                  (eq? (car new) id))
+                                                                (cdr new)) (loop (cdr new))]
+                                                        [else (cons (car new) (loop (cdr new)))]))])
+                                           (cons (car old-list) (append new (cdr old-list))))
+                                         old-list))
                                    nt-ids patss)
                                   ;; Determine left-recursive clauses:
                                   (for-each (λ (nt pats)

@@ -46,16 +46,16 @@
       'token
       (λ (this)
         (append (list (token-type this))
-                (if (token-value this) (list (token-value this)) (list))
+                (if (token-value this) (list (token-value this)) '())
                 (if (token-location this)
                     (list
                      (sequence-markup
                       (list (unquoted-printing-string "#:location") (token-location this))))
-                    (list))
+                    '())
                 (if (token-skip? this)
                     (list
                      (sequence-markup (list (unquoted-printing-string "#:skip?") (token-skip? this))))
-                    (list))))))])
+                    '())))))])
 
 
 (define (source-location #:source [source #false]

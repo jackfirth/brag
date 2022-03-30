@@ -147,11 +147,10 @@
         (lex:position-line start-pos)
         (lex:position-col start-pos)
         (lex:position-offset start-pos)
-        (if (and (number? (lex:position-offset end-pos))
-                 (number? (lex:position-offset start-pos)))
-            (- (lex:position-offset end-pos)
-               (lex:position-offset start-pos))
-            #f)))
+        (and (and (number? (lex:position-offset end-pos))
+                  (number? (lex:position-offset start-pos)))
+             (- (lex:position-offset end-pos)
+                (lex:position-offset start-pos)))))
 
 #|
 MB: the next three functions control the parse tree output.

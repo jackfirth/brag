@@ -30,13 +30,13 @@
     (cond
       [(null? sorted) null]
       [(null? (cdr sorted)) sorted]
+      [(and (= (non-term-index (trans-key-gs (car sorted)))
+               (non-term-index (trans-key-gs (cadr sorted))))
+            (= (kernel-index (trans-key-st (car sorted)))
+               (kernel-index (trans-key-st (cadr sorted)))))
+       (loop (cdr sorted))]
       [else
-       (if (and (= (non-term-index (trans-key-gs (car sorted)))
-                   (non-term-index (trans-key-gs (cadr sorted))))
-                (= (kernel-index (trans-key-st (car sorted)))
-                   (kernel-index (trans-key-st (cadr sorted)))))
-           (loop (cdr sorted))
-           (cons (car sorted) (loop (cdr sorted))))])))
+       (cons (car sorted) (loop (cdr sorted)))])))
 
 
 ;; build-transition-table : int (listof (cons/c trans-key X) ->

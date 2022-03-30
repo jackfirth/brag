@@ -32,12 +32,9 @@
 ;; returned.
 ;; Xs are compared with equal?
 (define (make-cache)
-  (let ([table (make-hash)])
-    (λ (key build)
-      (hash-ref table key (λ ()
-                            (let ([new (build)])
-                              (hash-set! table key new)
-                              new))))))
+  (define table (make-hash))
+  (λ (key build)
+    (hash-ref! table key build)))
 
 (module+ test
   (define cache (make-cache))
@@ -94,7 +91,7 @@
 ;; Sorts l according to index and removes the entries with duplicate
 ;; indexes.
 (define (do-simple-equiv l index)
-  (define ordered (sort l (λ (a b) (< (index a) (index b)))))
+  (define ordered (sort l < #:key index))
   (remove-dups ordered index null))
 
 (module+ test

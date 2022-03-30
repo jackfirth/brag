@@ -83,12 +83,12 @@
     [(_ RANGE ...)
      (let ([chars
             (apply append (for/list ([r (in-list (syntax->list #'(RANGE ...)))])
-                                 (let ([x (syntax-e r)])
-                                   (cond
-                                     [(char? x) (list x)]
-                                     [(string? x) (string->list x)]
-                                     [else
-                                      (raise-syntax-error #f "not a char or string" stx r)]))))])
+                            (define x (syntax-e r))
+                            (cond
+                              [(char? x) (list x)]
+                              [(string? x) (string->list x)]
+                              [else
+                               (raise-syntax-error #f "not a char or string" stx r)])))])
        (unless (even? (length chars))
          (raise-syntax-error #f "not given an even number of characters" stx))
        #`(/-only-chars #,@chars))]))

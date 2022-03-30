@@ -127,7 +127,7 @@
                            [(ACT ...) (map (λ (a) (wrap-action a src-loc-style)) acts)]
                            [(ACT-NAME ...) (vector->list action-names)]
                            [SPEC-ACT-STX (wrap-action spec-act src-loc-style)]
-                           [HAS-COMMENT-ACT?-STX (if (syntax-e spec-comment-act) #t #f)]
+                           [HAS-COMMENT-ACT?-STX (and (syntax-e spec-comment-act) #t)]
                            [SPEC-COMMENT-ACT-STX (wrap-action spec-comment-act src-loc-style)]
                            [EOF-ACT-STX (wrap-action eof-act src-loc-style)])
                (syntax/loc stx (let ([NAME ACT] ...)
@@ -200,7 +200,7 @@
      (define r1 (vector-ref el 0))
      (define r2 (vector-ref el 1))
      (cond
-       [(and (>= char r1) (<= char r2)) (vector-ref el 2)]
+       [(<= r1 char r2) (vector-ref el 2)]
        [(< char r1) (get-next-state-helper char min try table)]
        [else (get-next-state-helper char (add1 try) max table)])]))
                
@@ -351,18 +351,16 @@
      (with-syntax ([(CHAR ...) (string->list (syntax-e #'STR))])
        #'(union CHAR ...))]))
 
-(define-syntax provide-lex-keyword
-  (syntax-rules ()
-    [(_ ID ...)
-     (begin
-       (define-syntax-parameter ID
-         (make-set!-transformer
-          (λ (stx)
-            (raise-syntax-error
-             'provide-lex-keyword
-             (format "use of a lexer keyword (~a) is not in an appropriate lexer action" 'ID)
-             stx))))
-       ...
-       (provide ID ...))]))
+(define-syntax-rule (provide-lex-keyword ID ...)
+  (begin
+    (define-syntax-parameter ID
+      (make-set!-transformer
+       (λ (stx)
+         (raise-syntax-error
+          'provide-lex-keyword
+          (format "use of a lexer keyword (~a) is not in an appropriate lexer action" 'ID)
+          stx))))
+    ...
+    (provide ID ...)))
   
 (provide-lex-keyword start-pos end-pos lexeme lexeme-srcloc input-port return-without-pos return-without-srcloc)

@@ -114,9 +114,9 @@
   (regexp-match "%%" i)
   (begin0
     (let ([gram ((parse-grammar enter-term enter-empty-term enter-non-term)
-                 (λ () 
-                   (let ((t (get-token-grammar i)))
-                     t)))])
+                 (λ ()
+                   (define t (get-token-grammar i))
+                   t))])
       `(begin
          (define-tokens t ,(sort (hash-map terms (λ (k v) k)) symbol<?))
          (define-empty-tokens et ,(sort (hash-map eterms (λ (k v) k)) symbol<?))

@@ -7,10 +7,10 @@
          prim-rule)
 
 (define (make-fresh-name)
-  (let ([n 0])
-    (λ ()
-      (set! n (add1 n))
-      (string->symbol (format "%rule~a" n)))))
+  (define n 0)
+  (λ ()
+    (set! n (add1 n))
+    (string->symbol (format "%rule~a" n))))
 
 (define default-fresh-name (make-fresh-name))
 
@@ -161,10 +161,10 @@
 ;; Then the pattern-inference process treats them separately.
 (define (pattern->hash-key a-pat)
   (let loop ([x a-pat])
-    (let ([maybe-stx-list (syntax->list x)])
-      (if maybe-stx-list
-          (cons (syntax-property x 'hide) (map loop maybe-stx-list))
-          (syntax->datum x)))))
+    (define maybe-stx-list (syntax->list x))
+    (if maybe-stx-list
+        (cons (syntax-property x 'hide) (map loop maybe-stx-list))
+        (syntax->datum x))))
 
 
 ;; Returns true if the pattern looks primitive

@@ -169,7 +169,7 @@
                         [(list all min range? max) (let* ([min (if min (string->number min) 0)]
                                                           [max (cond
                                                                  [(and range? max) (string->number max)]
-                                                                 [(and (not range?) (not max)) (if (zero? min)
+                                                                 [(not (or range? max)) (if (zero? min)
                                                                                                    #f ; {} -> {0,}
                                                                                                    min)] ; {3} -> {3,3}
                                                                  [else #f])])
@@ -298,8 +298,7 @@
                            (pos-line start-pos)
                            (pos-col start-pos)
                            (pos-offset start-pos)
-                           (if (and (number? (pos-offset end-pos))
-                                    (number? (pos-offset start-pos)))
-                               (- (pos-offset end-pos)
-                                  (pos-offset start-pos))
-                               #f))))))))
+                           (and (and (number? (pos-offset end-pos))
+                                     (number? (pos-offset start-pos)))
+                                (- (pos-offset end-pos)
+                                   (pos-offset start-pos))))))))))

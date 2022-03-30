@@ -88,11 +88,11 @@
  
 ;; print-item: LR-item ->
 (define (item->string it)
-  (define print-sym (λ (i)
-                      (let ((gs (vector-ref (prod-rhs (item-prod it)) i)))
-                        (cond
-                          ((term? gs) (format "~a " (term-sym gs)))
-                          (else (format "~a " (non-term-sym gs)))))))
+  (define (print-sym i)
+    (define gs (vector-ref (prod-rhs (item-prod it)) i))
+    (cond
+      ((term? gs) (format "~a " (term-sym gs)))
+      (else (format "~a " (non-term-sym gs)))))
   (string-append
    (format "~a -> " (non-term-sym (prod-lhs (item-prod it))))
    (let loop ((i 0))

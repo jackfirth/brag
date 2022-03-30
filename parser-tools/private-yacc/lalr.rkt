@@ -140,35 +140,29 @@
   (printf "~a:\n" name)
   (send a for-each-state
         (λ (state)
-          (for-each
-           (λ (non-term)
-             (let ([res (f (trans-key state non-term))])
-               (when (not (null? res))
-                 (printf "~a(~a, ~a) = ~a\n"
-                         name
-                         state
-                         (gram-sym-symbol non-term)
-                         (print-output res)))))
-           (send g get-non-terms))))
+          (for ([non-term (in-list (send g get-non-terms))])
+            (define res (f (trans-key state non-term)))
+            (when (not (null? res))
+              (printf "~a(~a, ~a) = ~a\n"
+                      name
+                      state
+                      (gram-sym-symbol non-term)
+                      (print-output res))))))
   (newline))
 
 (define (print-input-st-prod f name a g print-output)
   (printf "~a:\n" name)
   (send a for-each-state
         (λ (state)
-          (for-each
-           (λ (non-term)
-             (for-each
-              (λ (prod)
-                (let ([res (f state prod)])
-                  (when (not (null? res))
-                    (printf "~a(~a, ~a) = ~a\n"
-                            name
-                            (kernel-index state)
-                            (prod-index prod)
-                            (print-output res)))))
-              (send g get-prods-for-non-term non-term)))
-           (send g get-non-terms)))))
+          (for ([non-term (in-list (send g get-non-terms))])
+            (for ([prod (in-list (send g get-prods-for-non-term non-term))])
+              (define res (f state prod))
+              (when (not (null? res))
+                (printf "~a(~a, ~a) = ~a\n"
+                        name
+                        (kernel-index state)
+                        (prod-index prod)
+                        (print-output res))))))))
   
 (define (print-output-terms r)
   (map gram-sym-symbol r))
@@ -232,12 +226,11 @@
     (let ([d (depth)])
       (set-N x d)
       (set-f x (f- x))
-      (for-each (λ (y)
-                  (when (= 0 (get-N y))
-                    (traverse y))
-                  (set-f x (bitwise-ior (get-f x) (get-f y)))
-                  (set-N x (min (get-N x) (get-N y))))
-                (edges x))
+      (for ([y (in-list (edges x))])
+        (when (= 0 (get-N y))
+          (traverse y))
+        (set-f x (bitwise-ior (get-f x) (get-f y)))
+        (set-N x (min (get-N x) (get-N y))))
       (when (= d (get-N x))
         (let loop ([p (pop)])
           (set-N p +inf.0)

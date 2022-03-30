@@ -8,10 +8,10 @@
 
 
   (define (make-fresh-name)
-    (let ([n 0])
-      (lambda ()
-        (set! n (add1 n))
-        (string->symbol (format "r~a" n)))))
+    (define n 0)
+    (lambda ()
+      (set! n (add1 n))
+      (string->symbol (format "r~a" n))))
 
 
   ;; Simple literals

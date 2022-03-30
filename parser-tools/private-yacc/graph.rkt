@@ -31,14 +31,13 @@
     (define d (depth))
     (set-N x d)
     (hash-set! results x (f- x))
-    (for-each (λ (y)
-                (when (= 0 (get-N y))
-                  (traverse y))
-                (hash-set! results
-                           x
-                           (union (f x) (f y)))
-                (set-N x (min (get-N x) (get-N y))))
-              (edges x))
+    (for ([y (in-list (edges x))])
+      (when (= 0 (get-N y))
+        (traverse y))
+      (hash-set! results
+                 x
+                 (union (f x) (f y)))
+      (set-N x (min (get-N x) (get-N y))))
     (when (= d (get-N x))
       (let loop ([p (pop)])
         (set-N p +inf.0)

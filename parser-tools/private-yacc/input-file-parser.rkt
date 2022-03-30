@@ -219,12 +219,11 @@
           p
           #f
           (let loop ([i (sub1 (vector-length p))])
-            (if (>= i 0)
-                (let ([gs (vector-ref p i)])
-                  (if (term? gs)
-                      (term-prec gs)
-                      (loop (sub1 i))))
-                #f))
+            (and (>= i 0)
+                 (let ([gs (vector-ref p i)])
+                   (if (term? gs)
+                       (term-prec gs)
+                       (loop (sub1 i))))))
           (parse-action #'PROD-RHS #'ACTION)))]
       [(PROD-RHS (PREC TERM) ACTION)
        (identifier? #'TERM)
