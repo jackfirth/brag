@@ -3,6 +3,7 @@
          yaragg/parser-tools/private-lex/token-syntax
          yaragg/parser-tools/private-yacc/grammar
          racket/contract
+         (except-in racket/list remove-duplicates)
          (for-template racket/base))
 
 ;; routines for parsing the input to the parser generator and producing a
