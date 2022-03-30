@@ -137,58 +137,92 @@
 
 ;; ------------------------- Grammar ------------------------------
 
+;; prods: production list list
+;; where there is one production list per non-term
+;; init-prods: production list
+;; The productions parsing can start from
+;; nullable-non-terms is indexed by the non-term-index and is true iff non-term is nullable
+(struct grammar (prods
+                 init-prods
+                 terms
+                 non-terms
+                 end-terms
+                 all-prods
+                 num-prods
+                 num-terms
+                 num-non-terms
+                 nt->prods
+                 nullable-non-terms))
+
+(define (make-grammar #:prods prods
+                      #:init-prods init-prods
+                      #:terms terms
+                      #:non-terms non-terms
+                      #:end-terms end-terms)
+
+  (define all-prods (apply append prods))
+  (define num-prods (length all-prods))
+  (define num-terms (length terms))
+  (define num-non-terms (length non-terms))
+  
+  (for ([(nt count) (in-indexed non-terms)])
+    (set-non-term-index! nt count))
+
+  (for ([(t count) (in-indexed terms)])
+    (set-term-index! t count))
+
+  (for ([(prod count) (in-indexed all-prods)])
+    (set-prod-index! prod count))
+
+  ;; indexed by the index of the non-term - contains the list of productions for that non-term
+  (define nt->prods (make-vector (length prods) #f))
+  (for ([prods (in-list prods)])
+    (vector-set! nt->prods (non-term-index (prod-lhs (car prods))) prods))
+      
+  (define nullable-non-terms
+    (nullable all-prods num-non-terms))
+  
+  (grammar prods
+           init-prods
+           terms
+           non-terms
+           end-terms
+           all-prods
+           num-prods
+           num-terms
+           num-non-terms
+           nt->prods
+           nullable-non-terms))
+
 (define grammar%
   (class object%
     (super-instantiate ())
-    ;; prods: production list list
-    ;; where there is one production list per non-term
-    (init prods)
-    ;; init-prods: production list
-    ;; The productions parsing can start from
-    ;; nullable-non-terms is indexed by the non-term-index and is true iff non-term is nullable
-    (init-field init-prods terms non-terms end-terms)
-  
-    ;; list of all productions
-    (define all-prods (apply append prods))
-    (define num-prods (length all-prods))
-    (define num-terms (length terms))
-    (define num-non-terms (length non-terms))
+    (init prods init-prods terms non-terms end-terms)
 
-    (for ([(nt count) (in-indexed non-terms)])
-      (set-non-term-index! nt count))
-
-    (for ([(t count) (in-indexed terms)])
-      (set-term-index! t count))
-
-    (for ([(prod count) (in-indexed all-prods)])
-      (set-prod-index! prod count))
-      
-    ;; indexed by the index of the non-term - contains the list of productions for that non-term
-    (define nt->prods
-      (let ((v (make-vector (length prods) #f)))
-        (for ([prods (in-list prods)])
-          (vector-set! v (non-term-index (prod-lhs (car prods))) prods))
-        v))
-      
-    (define nullable-non-terms
-      (nullable all-prods num-non-terms))
+    (define backing-struct
+      (make-grammar
+       #:prods prods
+       #:init-prods init-prods
+       #:terms terms
+       #:non-terms non-terms
+       #:end-terms end-terms))
             
-    (define/public (get-num-terms) num-terms)
-    (define/public (get-num-non-terms) num-non-terms)
+    (define/public (get-num-terms) (grammar-num-terms backing-struct))
+    (define/public (get-num-non-terms) (grammar-num-non-terms backing-struct))
       
     (define/public (get-prods-for-non-term nt)
-      (vector-ref nt->prods (non-term-index nt)))
-    (define/public (get-prods) all-prods)
-    (define/public (get-init-prods) init-prods)
+      (vector-ref (grammar-nt->prods backing-struct) (non-term-index nt)))
+    (define/public (get-prods) (grammar-all-prods backing-struct))
+    (define/public (get-init-prods) (grammar-init-prods backing-struct))
       
-    (define/public (get-terms) terms)
-    (define/public (get-non-terms) non-terms)
+    (define/public (get-terms) (grammar-terms backing-struct))
+    (define/public (get-non-terms) (grammar-non-terms backing-struct))
       
-    (define/public (get-num-prods) num-prods)
-    (define/public (get-end-terms) end-terms)
+    (define/public (get-num-prods) (grammar-num-prods backing-struct))
+    (define/public (get-end-terms) (grammar-end-terms backing-struct))
       
     (define/public (nullable-non-term? nt)
-      (vector-ref nullable-non-terms (non-term-index nt)))
+      (vector-ref (grammar-nullable-non-terms backing-struct) (non-term-index nt)))
 
     (define/public (nullable-after-dot? item)
       (define rhs (prod-rhs (item-prod item)))
@@ -205,7 +239,7 @@
       (λ (nt) (nullable-non-term? nt)))
     (define/public (nullable-after-dot?-thunk)
       (λ (item) (nullable-after-dot? item)))))
-  
+
   
 ;; nullable: production list * int -> non-term set
 ;; determines which non-terminals can derive epsilon
