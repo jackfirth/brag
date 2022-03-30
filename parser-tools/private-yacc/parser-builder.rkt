@@ -2,7 +2,6 @@
 (require yaragg/parser-tools/private-yacc/input-file-parser
          yaragg/parser-tools/private-yacc/grammar
          yaragg/parser-tools/private-yacc/table
-         racket/class
          racket/contract)
 (require (for-template racket/base))
   
@@ -68,14 +67,14 @@
   (define grammar (parse-input input-terms start end assocs prods src-pos))
   (define table (build-table grammar filename suppress))
   (define all-tokens (make-hasheq))
-  (define actions-code `(vector ,@(map prod-action (send grammar get-prods))))
+  (define actions-code `(vector ,@(map prod-action (grammar-all-prods grammar))))
 
-  (for ([term (in-list (send grammar get-terms))])
+  (for ([term (in-list (grammar-terms grammar))])
        (hash-set! all-tokens (gram-sym-symbol term) #t))
   
   #;(let ((num-states (vector-length table))
-          (num-gram-syms (+ (send grammar get-num-terms)
-                            (send grammar get-num-non-terms)))
+          (num-gram-syms (+ (grammar-num-terms grammar)
+                            (grammar-num-non-terms grammar)))
           (num-ht-entries (apply + (map length (vector->list table))))
           (num-reduces
            (let ((ht (make-hasheq)))

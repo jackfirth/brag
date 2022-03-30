@@ -155,8 +155,8 @@
 (define (build-lr0-automaton grammar)
   ;    (printf "LR(0) automaton:\n")
   (define epsilons (make-hash))
-  (define grammar-symbols (append (send grammar get-non-terms)
-                                  (send grammar get-terms)))
+  (define grammar-symbols (append (grammar-non-terms grammar)
+                                  (grammar-terms grammar)))
   ;; first-non-term: non-term -> non-term list
   ;; given a non-terminal symbol C, return those non-terminal 
   ;; symbols A s.t. C -> An for some string of terminals and
@@ -164,11 +164,11 @@
   ;; steps.  Assumes that each non-term can be reduced to a string 
   ;; of terms.
   (define first-non-term 
-    (digraph (send grammar get-non-terms)
+    (digraph (grammar-non-terms grammar)
              (λ (nt)
                (filter non-term?
                        (map (λ (prod) (sym-at-dot (item prod 0)))
-                            (send grammar get-prods-for-non-term nt))))
+                            (grammar-prods-for-non-term grammar nt))))
              (λ (nt) (list nt))
              (union non-term<?)
              (λ () null)))
@@ -186,9 +186,7 @@
           (cons (car i)
                 (append
                  (for*/list ([non-term (in-list (first-non-term next-gsym))]
-                             [x (in-list (send grammar 
-                                               get-prods-for-non-term
-                                               non-term))])
+                             [x (in-list (grammar-prods-for-non-term grammar non-term))])
                             (item x 0))
                  (LR0-closure (cdr i))))]
          [else (cons (car i) (LR0-closure (cdr i)))])]))
@@ -272,7 +270,7 @@
                (and new unique-kernel))))
 
   (define starts  (map (λ (init-prod) (list (item init-prod 0)))
-                       (send grammar get-init-prods)))
+                       (grammar-init-prods grammar)))
   (define startk (for/list ([start (in-list starts)])
                            (define k (kernel start counter))
                            (hash-set! kernels start k)

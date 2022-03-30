@@ -2,8 +2,7 @@
 ;; Constructs to create and access grammars, the internal
 ;; representation of the input to the parser generator.
   
-(require racket/class
-         yaragg/parser-tools/private-yacc/yacc-helper
+(require yaragg/parser-tools/private-yacc/yacc-helper
          racket/contract)
 
 (provide
@@ -19,7 +18,18 @@
  ;; Things that work on precs
  prec-num prec-assoc
 
- grammar%
+ grammar?
+ make-grammar
+ grammar-num-terms
+ grammar-num-non-terms
+ grammar-prods-for-non-term
+ grammar-all-prods
+ grammar-init-prods
+ grammar-terms
+ grammar-non-terms
+ grammar-num-prods
+ grammar-end-terms
+ grammar-nullable-non-term?
    
  ;; Things that work on productions
  prod-index prod-prec prod-rhs prod-lhs prod-action
@@ -203,64 +213,6 @@
 
 (define (grammar-nullable-non-term? g nt)
   (vector-ref (grammar-nullable-non-terms g) (non-term-index nt)))
-
-
-(define (grammar-nullable-after-dot? g item)
-  (define rhs (prod-rhs (item-prod item)))
-  (define prod-length (vector-length rhs))
-  (let loop ((i (item-dot-pos item)))
-    (cond
-      [(< i prod-length)
-       (and (non-term? (vector-ref rhs i))
-            (grammar-nullable-non-term? g (vector-ref rhs i))
-            (loop (add1 i)))]
-      [(= i prod-length)])))
-
-
-(define ((grammar-nullable-non-term-thunk g) nt)
-  (grammar-nullable-non-term? g nt))
-
-
-(define ((grammar-nullable-after-dot?-thunk g) item)
-  (grammar-nullable-after-dot? g item))
-
-
-(define grammar%
-  (class object%
-    (super-instantiate ())
-    (init prods init-prods terms non-terms end-terms)
-
-    (define backing-struct
-      (make-grammar
-       #:prods prods
-       #:init-prods init-prods
-       #:terms terms
-       #:non-terms non-terms
-       #:end-terms end-terms))
-            
-    (define/public (get-num-terms) (grammar-num-terms backing-struct))
-    (define/public (get-num-non-terms) (grammar-num-non-terms backing-struct))
-      
-    (define/public (get-prods-for-non-term nt) (grammar-prods-for-non-term backing-struct nt))
-    (define/public (get-prods) (grammar-all-prods backing-struct))
-    (define/public (get-init-prods) (grammar-init-prods backing-struct))
-      
-    (define/public (get-terms) (grammar-terms backing-struct))
-    (define/public (get-non-terms) (grammar-non-terms backing-struct))
-      
-    (define/public (get-num-prods) (grammar-num-prods backing-struct))
-    (define/public (get-end-terms) (grammar-end-terms backing-struct))
-
-    (define/public (nullable-non-term? nt)
-      (grammar-nullable-non-term? backing-struct nt))
-
-    (define/public (nullable-after-dot? item)
-      (grammar-nullable-after-dot? backing-struct item))
-      
-    (define/public (nullable-non-term-thunk)
-      (grammar-nullable-non-term-thunk backing-struct))
-    (define/public (nullable-after-dot?-thunk)
-      (grammar-nullable-after-dot?-thunk backing-struct))))
 
   
 ;; nullable: production list * int -> non-term set

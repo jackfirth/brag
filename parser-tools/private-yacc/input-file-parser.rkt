@@ -2,17 +2,15 @@
 (require yaragg/parser-tools/private-yacc/yacc-helper
          yaragg/parser-tools/private-lex/token-syntax
          yaragg/parser-tools/private-yacc/grammar
-         racket/class
          racket/contract
          (for-template racket/base))
 
 ;; routines for parsing the input to the parser generator and producing a
 ;; grammar (See grammar.rkt)
 
-(define (is-a-grammar%? x) (is-a? x grammar%))
 (provide/contract 
  [parse-input ((listof identifier?) (listof identifier?) (listof identifier?)
-                                    (or/c #f syntax?) syntax? any/c . -> . is-a-grammar%?)]
+                                    (or/c #f syntax?) syntax? any/c . -> . grammar?)]
  [get-term-list ((listof identifier?) . -> . (listof identifier?))])
 
 (define stx-for-original-property (read-syntax #f (open-input-string "original")))
@@ -287,10 +285,10 @@
                       #f
                       #'values)))
             parsed-prods))
-          
-  (make-object grammar%
-    new-prods
-    (map car start-prods)
-    terms
-    (append starts (append end-non-terms non-terms))
-    (map (λ (term-name) (hash-ref term-table term-name)) end-terms)))
+
+  (make-grammar
+    #:prods new-prods
+    #:init-prods (map car start-prods)
+    #:terms terms
+    #:non-terms (append starts (append end-non-terms non-terms))
+    #:end-terms (map (λ (term-name) (hash-ref term-table term-name)) end-terms)))

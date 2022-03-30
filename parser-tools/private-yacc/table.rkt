@@ -9,9 +9,8 @@
 ;; Routine to build the LALR table
 
 
-(define (is-a-grammar%? x) (is-a? x grammar%))
 (provide/contract 
- (build-table (-> is-a-grammar%? string? any/c
+ (build-table (-> grammar? string? any/c
                   (vectorof (listof (cons/c (or/c term? non-term?) action?))))))
 
 ;; A parse-table is (vectorof (listof (cons/c gram-sym? action)))
@@ -208,8 +207,8 @@
 ;; build-table: grammar string bool -> parse-table
 (define (build-table g file suppress)
   (define a (build-lr0-automaton g))
-  (define term-vector (list->vector (send g get-terms)))
-  (define end-terms (send g get-end-terms))
+  (define term-vector (list->vector (grammar-terms g)))
+  (define end-terms (grammar-end-terms g))
   (define table (make-parse-table (send a get-num-states)))
   (define get-lookahead (compute-LA a g))
   (define reduce-cache (make-hash))
@@ -254,6 +253,6 @@
                         (exn-message e))))]
       (call-with-output-file file
         (λ (port)
-          (display-parser a grouped-table (send g get-prods) port))
+          (display-parser a grouped-table (grammar-all-prods g) port))
         #:exists 'truncate)))
   (resolve-conflicts grouped-table suppress))

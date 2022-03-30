@@ -14,12 +14,12 @@
 (define ((compute-DR a g) tk)
   (define r (send a run-automaton (trans-key-st tk) (trans-key-gs tk)))
   (term-list->bit-vector
-   (filter (λ (term) (send a run-automaton r term)) (send g get-terms))))
+   (filter (λ (term) (send a run-automaton r term)) (grammar-terms g))))
   
 ;; compute-reads: 
 ;;   LR0-automaton * grammar -> (trans-key -> trans-key list)
 (define (compute-reads a g)
-  (define nullable-non-terms  (filter (λ (nt) (send g nullable-non-term? nt)) (send g get-non-terms)))
+  (define nullable-non-terms  (filter (λ (nt) (grammar-nullable-non-term? g nt)) (grammar-non-terms g)))
   (λ (tk)
     (define r (send a run-automaton (trans-key-st tk) (trans-key-gs tk)))
     (for/list ([non-term (in-list nullable-non-terms)]
@@ -58,7 +58,7 @@
             (cond
               [(and (> i 0) 
                     (non-term? (vector-ref rhs i)) 
-                    (send g nullable-non-term? (vector-ref rhs i)))
+                    (grammar-nullable-non-term? g (vector-ref rhs i)))
                (if (eq? nt (vector-ref rhs (sub1 i)))
                    (cons (item prod (sub1 i))
                          (loop (sub1 i)))
@@ -74,10 +74,10 @@
 ;; comput-includes: lr0-automaton * grammar -> (trans-key -> trans-key list)
 (define (compute-includes a g)
   (define num-states (send a get-num-states))
-  (define items-for-input-nt (make-vector (send g get-num-non-terms) null))
-  (for ([input-nt (in-list (send g get-non-terms))])
+  (define items-for-input-nt (make-vector (grammar-num-non-terms g) null))
+  (for ([input-nt (in-list (grammar-non-terms g))])
        (vector-set! items-for-input-nt (non-term-index input-nt)
-                    (prod-list->items-for-include g (send g get-prods) input-nt)))
+                    (prod-list->items-for-include g (grammar-all-prods g) input-nt)))
   (λ (tk)
     (define goal-state (trans-key-st tk))
     (define non-term (trans-key-gs tk))
@@ -140,7 +140,7 @@
   (printf "~a:\n" name)
   (send a for-each-state
         (λ (state)
-          (for ([non-term (in-list (send g get-non-terms))])
+          (for ([non-term (in-list (grammar-non-terms g))])
             (define res (f (trans-key state non-term)))
             (when (not (null? res))
               (printf "~a(~a, ~a) = ~a\n"
@@ -154,8 +154,8 @@
   (printf "~a:\n" name)
   (send a for-each-state
         (λ (state)
-          (for ([non-term (in-list (send g get-non-terms))])
-            (for ([prod (in-list (send g get-prods-for-non-term non-term))])
+          (for ([non-term (in-list (grammar-non-terms g))])
+            (for ([prod (in-list (grammar-prods-for-non-term g non-term))])
               (define res (f state prod))
               (when (not (null? res))
                 (printf "~a(~a, ~a) = ~a\n"
