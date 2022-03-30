@@ -5,6 +5,32 @@
 (require racket/class
          yaragg/parser-tools/private-yacc/yacc-helper
          racket/contract)
+
+(provide
+ ;; Things that work on items
+ start-item? item-prod item->string 
+ sym-at-dot move-dot-right item<? item-dot-pos
+   
+ ;; Things that operate on grammar symbols
+ gram-sym-symbol gram-sym-index term-prec gram-sym->string
+ non-term? term? non-term<? term<?
+ term-list->bit-vector term-index non-term-index
+   
+ ;; Things that work on precs
+ prec-num prec-assoc
+
+ grammar%
+   
+ ;; Things that work on productions
+ prod-index prod-prec prod-rhs prod-lhs prod-action
+
+ (contract-out
+  [item (prod? (or/c #f natural-number/c) . -> . item?)]
+  [term (symbol? (or/c #f natural-number/c) (or/c prec? #f) . -> . term?)]
+  [non-term (symbol? (or/c #f natural-number/c) . -> . non-term?)]
+  [prec (natural-number/c (or/c 'left 'right 'nonassoc) . -> . prec?)]
+  [prod (non-term? (vectorof (or/c non-term? term?))
+                   (or/c #f natural-number/c) (or/c #f prec?) syntax? . -> . prod?)]))
   
 ;; Each production has a unique index 0 <= index <= number of productions
 (struct prod (lhs rhs index prec action) #:mutable)
@@ -23,33 +49,6 @@
 ;; a precedence declaration.
 (struct prec (num assoc) #:transparent)
   
-(provide/contract
- [item (prod? (or/c #f natural-number/c) . -> . item?)]
- [term (symbol? (or/c #f natural-number/c) (or/c prec? #f) . -> . term?)]
- [non-term (symbol? (or/c #f natural-number/c) . -> . non-term?)]
- [prec (natural-number/c (or/c 'left 'right 'nonassoc) . -> . prec?)]
- [prod (non-term? (vectorof (or/c non-term? term?))
-                  (or/c #f natural-number/c) (or/c #f prec?) syntax? . -> . prod?)])
-  
-(provide
- ;; Things that work on items
- start-item? item-prod item->string 
- sym-at-dot move-dot-right item<? item-dot-pos
-   
- ;; Things that operate on grammar symbols
- gram-sym-symbol gram-sym-index term-prec gram-sym->string
- non-term? term? non-term<? term<?
- term-list->bit-vector term-index non-term-index
-   
- ;; Things that work on precs
- prec-num prec-assoc
-
- grammar%
-   
- ;; Things that work on productions
- prod-index prod-prec prod-rhs prod-lhs prod-action)
-
-
 ;;---------------------- LR items --------------------------
   
 ;; item<?: LR-item * LR-item -> bool
@@ -74,7 +73,7 @@
   (cond
     [(= (item-dot-pos i) (vector-length (prod-rhs (item-prod i)))) #f]
     [else (item (item-prod i)
-                     (add1 (item-dot-pos i)))]))
+                (add1 (item-dot-pos i)))]))
 
 ;; sym-at-dot: LR-item -> gram-sym | #f
 ;; returns the symbol after the dot in the item or #f if there is none  
@@ -156,19 +155,19 @@
     (define num-non-terms (length non-terms))
 
     (for ([(nt count) (in-indexed non-terms)])
-         (set-non-term-index! nt count))
+      (set-non-term-index! nt count))
 
     (for ([(t count) (in-indexed terms)])
-         (set-term-index! t count))
+      (set-term-index! t count))
 
     (for ([(prod count) (in-indexed all-prods)])
-         (set-prod-index! prod count))
+      (set-prod-index! prod count))
       
     ;; indexed by the index of the non-term - contains the list of productions for that non-term
     (define nt->prods
       (let ((v (make-vector (length prods) #f)))
         (for ([prods (in-list prods)])
-             (vector-set! v (non-term-index (prod-lhs (car prods))) prods))
+          (vector-set! v (non-term-index (prod-lhs (car prods))) prods))
         v))
       
     (define nullable-non-terms
@@ -219,7 +218,7 @@
   (define (possible-nullable prods)
     (for/list ([prod (in-list prods)]
                #:when (vector-andmap non-term? (prod-rhs prod)))
-              prod))
+      prod))
 	     
   ;; set-nullables: production list -> production list
   ;; makes one pass through the productions, adding the ones
