@@ -59,7 +59,7 @@
 (define (reverse-assoc assoc)
   (define reverse-hash (make-hash))
   (define (hash-table-add! ht k v)
-    (hash-update! ht k (λ (v) (cons v v)) '()))
+    (hash-set! ht k (cons v (hash-ref ht k '()))))
   (for ([trans-key/kernel (in-list assoc)])
        (define tk (car trans-key/kernel))
        (hash-table-add! reverse-hash 
