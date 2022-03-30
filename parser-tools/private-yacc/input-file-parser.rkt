@@ -26,7 +26,7 @@
          [v (in-value (syntax-local-value td))]
          #:when (e-terminals-def? v)
          [s (in-list (syntax->list (e-terminals-def-t v)))])
-        (hash-set! empty-table (syntax->datum s) #t))
+    (hash-set! empty-table (syntax->datum s) #t))
   (define args
     (let get-args ([i i][rhs rhs])
       (cond
@@ -63,16 +63,16 @@
     
   ;; Fill the prec table
   (for ([p-decl (in-list precs)])
-       (define assoc (car p-decl))
-       (for ([term-sym (in-list (cdr p-decl))])
-            (hash-set! prec-table term-sym (prec counter assoc)))
-       (set! counter (add1 counter)))
+    (define assoc (car p-decl))
+    (for ([term-sym (in-list (cdr p-decl))])
+      (hash-set! prec-table term-sym (prec counter assoc)))
+    (set! counter (add1 counter)))
       
   ;; Build the terminal structures
   (for/list ([term-sym (in-list term-list)])
-            (term term-sym 
-                       #f
-                       (hash-ref prec-table term-sym (λ () #f)))))
+    (term term-sym 
+          #f
+          (hash-ref prec-table term-sym (λ () #f)))))
   
 ;; Retrieves the terminal symbols from a terminals-def (See terminal-syntax.rkt)
 ;; get-terms-from-def: identifier? -> (listof identifier?)
@@ -97,13 +97,13 @@
   (define list-of-terms (map syntax-e (get-term-list term-defs)))
   (define end-terms
     (for/list ([end (in-list ends)])
-              (unless (memq (syntax-e end) list-of-terms)
-                (raise-syntax-error
-                 'parser-end-tokens
-                 (format "End token ~a not defined as a token"
-                         (syntax-e end))
-                 end))
-              (syntax-e end)))
+      (unless (memq (syntax-e end) list-of-terms)
+        (raise-syntax-error
+         'parser-end-tokens
+         (format "End token ~a not defined as a token"
+                 (syntax-e end))
+         end))
+      (syntax-e end)))
   ;; Get the list of terminals out of input-terms
   (define list-of-non-terms
     (syntax-case prods ()
@@ -111,10 +111,10 @@
        (begin
          (for ([nts (in-list (syntax->list #'(NON-TERM ...)))]
                #:when (memq (syntax->datum nts) list-of-terms))
-              (raise-syntax-error
-               'parser-non-terminals
-               (format "~a used as both token and non-terminal" (syntax->datum nts))
-               nts))
+           (raise-syntax-error
+            'parser-non-terminals
+            (format "~a used as both token and non-terminal" (syntax->datum nts))
+            nts))
          (let ([dup (duplicate-list? (syntax->datum #'(NON-TERM ...)))])
            (when dup
              (raise-syntax-error
@@ -140,16 +140,16 @@
                                          prec-decls))]
            [else (for ([t (in-list (syntax->list #'(TERM ... ...)))]
                        #:when (not (memq (syntax->datum t) list-of-terms)))
-                      (raise-syntax-error
-                       'parser-precedences
-                       (format "Precedence declared for non-token ~a" (syntax->datum t))
-                       t))
+                   (raise-syntax-error
+                    'parser-precedences
+                    (format "Precedence declared for non-token ~a" (syntax->datum t))
+                    t))
                  (for ([type (in-list (syntax->list #'(TYPE ...)))]
                        #:unless (memq (syntax->datum type) `(left right nonassoc)))
-                      (raise-syntax-error
-                       'parser-precedences
-                       "Associativity must be left, right or nonassoc"
-                       type))
+                   (raise-syntax-error
+                    'parser-precedences
+                    "Associativity must be left, right or nonassoc"
+                    type))
                  (syntax->datum prec-decls)]))]
       [#f null]
       [_ (raise-syntax-error
@@ -163,10 +163,10 @@
   (define non-term-table (make-hasheq))
   
   (for ([t (in-list terms)])
-       (hash-set! term-table (gram-sym-symbol t) t))
+    (hash-set! term-table (gram-sym-symbol t) t))
 
   (for ([nt (in-list non-terms)])
-       (hash-set! non-term-table (gram-sym-symbol nt) nt))
+    (hash-set! non-term-table (gram-sym-symbol nt) nt))
 
   ;; parse-prod: syntax-object -> gram-sym vector
   (define (parse-prod prod-so)
@@ -176,18 +176,18 @@
        (begin
          (for ([t (in-list (syntax->list prod-so))]
                #:when (memq (syntax->datum t) end-terms))
-              (raise-syntax-error
-               'parser-production-rhs
-               (format "~a is an end token and cannot be used in a production" (syntax->datum t))
-               t))
+           (raise-syntax-error
+            'parser-production-rhs
+            (format "~a is an end token and cannot be used in a production" (syntax->datum t))
+            t))
          (for/vector ([s (in-list (syntax->list prod-so))])
-                     (cond
-                       [(hash-ref term-table (syntax->datum s) #f)]
-                       [(hash-ref non-term-table (syntax->datum s) #f)]
-                       [else (raise-syntax-error
-                              'parser-production-rhs
-                              (format "~a is not declared as a terminal or non-terminal" (syntax->datum s))
-                              s)])))]
+           (cond
+             [(hash-ref term-table (syntax->datum s) #f)]
+             [(hash-ref non-term-table (syntax->datum s) #f)]
+             [else (raise-syntax-error
+                    'parser-production-rhs
+                    (format "~a is not declared as a terminal or non-terminal" (syntax->datum s))
+                    s)])))]
       [_ (raise-syntax-error
           'parser-production-rhs
           "production right-hand-side must have form (symbol ...)"
@@ -262,29 +262,30 @@
   (for ([sstx (in-list start)]
         [ssym (in-list start-syms)]
         #:unless (memq ssym list-of-non-terms))
-       (raise-syntax-error
-        'parser-start
-        (format "Start symbol ~a not defined as a non-terminal" ssym)
-        sstx))
+    (raise-syntax-error
+     'parser-start
+     (format "Start symbol ~a not defined as a non-terminal" ssym)
+     sstx))
 
   (define starts (map (λ (x) (non-term (gensym) #f)) start-syms))
   (define end-non-terms (map (λ (x) (non-term (gensym) #f)) start-syms))
   (define parsed-prods (map parse-prods-for-nt (syntax->list prods)))
-  (define start-prods (for/list ([start (in-list starts)]
-                                 [end-non-term (in-list end-non-terms)])
-                                (list (prod start (vector end-non-term) #f #f #'values))))
+  (define start-prods
+    (for/list ([start (in-list starts)]
+               [end-non-term (in-list end-non-terms)])
+      (list (prod start (vector end-non-term) #f #f #'values))))
   (define new-prods 
     (append start-prods
             (for/list ([end-nt (in-list end-non-terms)]
                        [start-sym (in-list start-syms)])
-                      (for/list ([end (in-list end-terms)])
-                                (prod end-nt
-                                           (vector
-                                            (hash-ref non-term-table start-sym)
-                                            (hash-ref term-table end))
-                                           #f
-                                           #f
-                                           #'values)))
+              (for/list ([end (in-list end-terms)])
+                (prod end-nt
+                      (vector
+                       (hash-ref non-term-table start-sym)
+                       (hash-ref term-table end))
+                      #f
+                      #f
+                      #'values)))
             parsed-prods))
           
   (make-object grammar%
