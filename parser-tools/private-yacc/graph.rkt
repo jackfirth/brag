@@ -42,7 +42,7 @@
       (let loop ([p (pop)])
         (set-N p +inf.0)
         (hash-set! results p (f x))
-        (when (not (eq? x p))
+        (unless (eq? x p)
           (loop (pop))))))
   ;; Will map elements of 'a to 'b sets
   (for ([x (in-list nodes)]

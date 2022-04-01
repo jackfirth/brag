@@ -143,7 +143,7 @@
         (λ (state)
           (for ([non-term (in-list (grammar-non-terms g))])
             (define res (f (trans-key state non-term)))
-            (when (not (null? res))
+            (unless (null? res)
               (printf "~a(~a, ~a) = ~a\n"
                       name
                       state
@@ -155,15 +155,15 @@
   (printf "~a:\n" name)
   (send a for-each-state
         (λ (state)
-          (for ([non-term (in-list (grammar-non-terms g))])
-            (for ([prod (in-list (grammar-prods-for-non-term g non-term))])
-              (define res (f state prod))
-              (when (not (null? res))
-                (printf "~a(~a, ~a) = ~a\n"
-                        name
-                        (kernel-index state)
-                        (prod-index prod)
-                        (print-output res))))))))
+          (for* ([non-term (in-list (grammar-non-terms g))]
+                 [prod (in-list (grammar-prods-for-non-term g non-term))])
+            (define res (f state prod))
+            (unless (null? res)
+              (printf "~a(~a, ~a) = ~a\n"
+                      name
+                      (kernel-index state)
+                      (prod-index prod)
+                      (print-output res)))))))
   
 (define (print-output-terms r)
   (map gram-sym-symbol r))

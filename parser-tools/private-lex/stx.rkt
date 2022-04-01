@@ -27,7 +27,7 @@
 (define orig-insp (variable-reference->module-declaration-inspector
                    (#%variable-reference)))
 (define (disarm stx)
-  (syntax-disarm stx orig-insp))
+  stx)
 
 ;; parse : syntax-object (box (list-of syntax-object)) -> s-re (see re.rkt)
 ;; checks for errors and generates the plain s-exp form for s
@@ -37,10 +37,10 @@
              ;; seen-lex-abbrevs: id-table
              [seen-lex-abbrevs (make-immutable-free-id-table)])
     (define (recur s)
-      (loop (syntax-rearm s stx)
+      (loop s
             seen-lex-abbrevs))
     (define (recur/abbrev s id)
-      (loop (syntax-rearm s stx)
+      (loop s
             (free-id-table-set seen-lex-abbrevs id id)))
     (syntax-case (disarm stx) (repetition union intersection complement concatenation
                                           char-range char-complement)
