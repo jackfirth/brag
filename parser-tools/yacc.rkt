@@ -209,20 +209,17 @@
                           (let ([a (find-action stack tok val start-pos end-pos)])
                             (cond
                               [(runtime-shift? a)
-                               ;; (printf "shift:~a\n" (runtime-shift-state a))
                                (cons (stack-frame (runtime-shift-state a)
                                                        val
                                                        start-pos
                                                        end-pos)
                                      stack)]
                               [else
-                               ;; (printf "discard input:~a\n" tok)
                                (call-with-values (λ () (extract (get-token))) remove-input)])))))
               (let remove-states ()
                 (define a (find-action stack 'error #f start-pos end-pos))
                 (cond
                   [(runtime-shift? a)
-                   ;; (printf "shift:~a\n" (runtime-shift-state a))
                    (set! stack 
                          (cons
                           (stack-frame (runtime-shift-state a) 
@@ -232,7 +229,6 @@
                           stack))
                    (remove-input tok val start-pos end-pos)]
                   [else
-                   ;; (printf "discard state:~a\n" (car stack))
                    (cond
                      [(< (length stack) 2)
                       (raise-read-error "parser: Cannot continue after error"
@@ -260,7 +256,6 @@
               (define action (find-action stack tok val start-pos end-pos))
               (cond
                 [(runtime-shift? action)
-                 ;; (printf "shift:~a\n" (runtime-shift-state action))
                  (parsing-loop (cons (stack-frame (runtime-shift-state action)
                                                   val
                                                   start-pos
@@ -268,7 +263,6 @@
                                      stack)
                                (get-token))]
                 [(runtime-reduce? action)
-                 ;; (printf "reduce:~a\n" (runtime-reduce-prod-num action))
                  (let-values ([(new-stack args)
                                (reduce-stack stack 
                                              (runtime-reduce-rhs-length action)
@@ -297,7 +291,6 @@
                      new-stack)
                     ip))]
                 [(runtime-accept? action)
-                 ;; (printf "accept\n")
                  (stack-frame-value (car stack))]
                 [else 
                  (if src-pos
