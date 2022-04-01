@@ -165,15 +165,15 @@
                 [(string=? $2 "?") (cons 0 1)]
                 [(regexp-match #px"^\\{(\\d+)?(,)?(\\d+)?\\}$" $2) ; "{min,max}" with both min & max optional
                  => (λ (m)
-                      (match m
-                        [(list all min range? max) (let* ([min (if min (string->number min) 0)]
-                                                          [max (cond
-                                                                 [(and range? max) (string->number max)]
-                                                                 [(not (or range? max)) (if (zero? min)
-                                                                                                   #f ; {} -> {0,}
-                                                                                                   min)] ; {3} -> {3,3}
-                                                                 [else #f])])
-                                                     (cons min max))]))]
+                      (match-define (list all min range? max) m)
+                      (let* ([min (if min (string->number min) 0)]
+                             [max (cond
+                                    [(and range? max) (string->number max)]
+                                    [(not (or range? max)) (if (zero? min)
+                                                               #f ; {} -> {0,}
+                                                               min)] ; {3} -> {3,3}
+                                    [else #f])])
+                        (cons min max)))]
                 [else (raise-argument-error 'grammar-parse "unknown repetition operator" $2)]))
         (pattern-repeat (position->pos $1-start-pos)
                         (position->pos $2-end-pos)

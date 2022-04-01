@@ -20,14 +20,13 @@
 ;; function value for the error handler up front.  We want to delay that decision
 ;; till parse time.
 (define (the-error-handler tok-ok? tok-name tok-value start-pos end-pos)
-  (match (positions->srcloc start-pos end-pos)
-    [(list src line col offset span)
-     ((current-parser-error-handler) tok-name 
-                                     tok-value
-                                     offset
-                                     line
-                                     col 
-                                     span)]))
+  (match-define (list src line col offset span) (positions->srcloc start-pos end-pos))
+  ((current-parser-error-handler) tok-name 
+                                  tok-value
+                                  offset
+                                  line
+                                  col 
+                                  span))
 
 
 
