@@ -17,12 +17,12 @@
 ;;                       (vectorof (symbol runtime-action hashtable))
 (define-for-syntax (convert-parse-table table)
   (for/vector ([state-entry (in-vector table)])
-    (let ([ht (make-hasheq)])
-      (for ([gs/action (in-list state-entry)])
-        (hash-set! ht
-                   (gram-sym-symbol (car gs/action))
-                   (action->runtime-action (cdr gs/action))))
-      ht)))
+    (define ht (make-hasheq))
+    (for ([gs/action (in-list state-entry)])
+      (hash-set! ht
+                 (gram-sym-symbol (car gs/action))
+                 (action->runtime-action (cdr gs/action))))
+    ht))
   
 (define-syntax (parser stx)
   (syntax-case stx ()
