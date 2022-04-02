@@ -203,19 +203,19 @@
           (define (fix-error stack tok val start-pos end-pos get-token)
             (when debug? (pretty-print stack))
             (local ((define (remove-input tok val start-pos end-pos)
-                      (if (memq tok ends)
-                          (raise-read-error "parser: Cannot continue after error"
-                                            #f #f #f #f #f)
-                          (let ([a (find-action stack tok val start-pos end-pos)])
-                            (cond
-                              [(runtime-shift? a)
-                               (cons (stack-frame (runtime-shift-state a)
-                                                       val
-                                                       start-pos
-                                                       end-pos)
-                                     stack)]
-                              [else
-                               (call-with-values (λ () (extract (get-token))) remove-input)])))))
+                      (when (memq tok ends)
+                        (raise-read-error "parser: Cannot continue after error"
+                                          #f #f #f #f #f))
+                      (define a (find-action stack tok val start-pos end-pos))
+                      (cond
+                        [(runtime-shift? a)
+                         (cons (stack-frame (runtime-shift-state a)
+                                            val
+                                            start-pos
+                                            end-pos)
+                               stack)]
+                        [else
+                         (call-with-values (λ () (extract (get-token))) remove-input)])))
               (let remove-states ()
                 (define a (find-action stack 'error #f start-pos end-pos))
                 (cond
@@ -228,14 +228,12 @@
                                        end-pos)
                           stack))
                    (remove-input tok val start-pos end-pos)]
+                  [(< (length stack) 2)
+                   (raise-read-error "parser: Cannot continue after error"
+                                     #f #f #f #f #f)]
                   [else
-                   (cond
-                     [(< (length stack) 2)
-                      (raise-read-error "parser: Cannot continue after error"
-                                        #f #f #f #f #f)]
-                     [else
-                      (set! stack (cdr stack))
-                      (remove-states)])]))))
+                   (set! stack (cdr stack))
+                   (remove-states)]))))
             
           (define (find-action stack tok val start-pos end-pos)
             (unless (hash-ref all-term-syms tok #f)
