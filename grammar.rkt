@@ -3,8 +3,8 @@
 
 (require racket/contract
          racket/match
-         racket/sequence
          racket/set
+         racket/stream
          racket/struct
          rebellion/collection/vector
          rebellion/private/guarded-block)
@@ -68,7 +68,17 @@
 ;; A (Nonterminal-Derivation T S L) represents a nonterminal that was matched by the grammar. It
 ;; contains the nonterminal symbol of type T that was matched, the label of type L of the specific
 ;; rule that matched, and an immutable vector of subderivations 
-(struct nonterminal-derivation parser-derivation (symbol label children) #:transparent)
+(struct nonterminal-derivation parser-derivation (symbol label children)
+  #:transparent
+  #:property prop:custom-print-quotable 'never
+  #:methods gen:custom-write
+  [(define write-proc
+     (make-constructor-style-printer
+      (λ (_) 'nonterminal-derivation)
+      (λ (this)
+        (list* (nonterminal-derivation-symbol this)
+               (nonterminal-derivation-label this)
+               (vector->list (nonterminal-derivation-children this))))))])
 
 
 (define (make-nonterminal-derivation symbol label [children '()])
@@ -112,7 +122,78 @@
 ;; Earley parser
 
 
-(struct earley-state (rule substitution-position input-position)
+;; The hash keys are sppf-labels and the values are a list of sppf-child-pairs
+(struct sppf-forest (hash))
+
+
+(define (make-sppf-forest)
+  (sppf-forest (make-hash)))
+
+
+(define (sppf-forest-add-node! forest label)
+  (define h (sppf-forest-hash forest))
+  (unless (hash-has-key? h label)
+    (hash-set! h label '())))
+
+
+(define (sppf-forest-add-child-pair! forest label #:left left-child #:right right-child)
+  (define pair (sppf-child-pair left-child right-child))
+  (hash-update! (sppf-forest-hash forest) label (λ (children) (cons pair children)) '()))
+
+
+(struct sppf-child-pair (left-child right-child) #:transparent)
+(struct sppf-key () #:transparent)
+(struct complete-sppf-key sppf-key (symbol input-start input-end) #:transparent)
+
+(struct incomplete-sppf-key sppf-key (rule substitution-position input-start input-end)
+  #:transparent)
+
+
+(define (sppf-key-input-end key)
+  (if (complete-sppf-key? key)
+      (complete-sppf-key-input-end key)
+      (incomplete-sppf-key-input-end key)))
+
+
+(define (possible-children-lists forest key)
+  (define hash (sppf-forest-hash forest))
+  (let loop ([key key] [right-children '()])
+    (guarded-block
+     (guard key else
+       (stream right-children))
+     (match-define (list (sppf-child-pair left right) ...) (hash-ref hash key '()))
+     (apply stream-append
+            (for/list ([l (in-list left)]
+                       [r (in-list right)])
+              (loop l (cons r right-children)))))))
+
+
+(define (cartesian-stream streams)
+
+  (define (combine s1 s2)
+    (for*/stream ([x (in-stream s1)]
+                  [y (in-stream s2)])
+      (cons x y)))
+
+  (foldr combine (stream '()) streams))
+
+
+(define (sppf-forest-derivations forest key tokens)
+  (define hash (sppf-forest-hash forest))
+  (let loop ([key key])
+    (guarded-block
+     (guard (complete-sppf-key? key) then
+       (define tok (vector-ref tokens (complete-sppf-key-input-start key)))
+       (stream (terminal-derivation (token-value tok))))
+     (define symbol (context-free-production-rule-nonterminal (incomplete-sppf-key-rule key)))
+     (define label (context-free-production-rule-label (incomplete-sppf-key-rule key)))
+     (define possible-children (possible-children-lists forest key))
+     (for*/stream ([children (in-stream possible-children)]
+                   [processed-children (in-stream (cartesian-stream (map loop children)))])
+       (make-nonterminal-derivation symbol label processed-children)))))
+
+
+(struct earley-state (rule substitution-position input-position key)
   #:transparent
   #:property prop:custom-print-quotable 'never
   #:methods gen:custom-write
@@ -123,28 +204,35 @@
         (define rule (earley-state-rule this))
         (define substitution (context-free-production-rule-substitution rule))
         (define pos (earley-state-substitution-position this))
-        (list (list (context-free-production-rule-nonterminal rule) '->)
-              (for/list ([sym (in-vector substitution 0 pos)])
-                (if (terminal-symbol? sym)
-                    (terminal-symbol-value sym)
-                    (nonterminal-symbol-value sym)))
-              (list '•)
-              (for/list ([sym (in-vector substitution pos)])
-                (if (terminal-symbol? sym)
-                    (terminal-symbol-value sym)
-                    (nonterminal-symbol-value sym)))
-              (earley-state-input-position this)))))])
+        (append (list (context-free-production-rule-nonterminal rule) '->)
+                (for/list ([sym (in-vector substitution 0 pos)])
+                  (if (terminal-symbol? sym)
+                      (terminal-symbol-value sym)
+                      (nonterminal-symbol-value sym)))
+                (list '•)
+                (for/list ([sym (in-vector substitution pos)])
+                  (if (terminal-symbol? sym)
+                      (terminal-symbol-value sym)
+                      (nonterminal-symbol-value sym)))
+                (list (earley-state-input-position this) (earley-state-key this))))))])
 
 
 (define (initial-earley-states grammar)
   (for/set ([rule (grammar-start-rules grammar)])
-    (earley-state rule 0 0)))
+    (earley-state rule 0 0 #false)))
+
+
+(define (earley-state-represents-successful-parse? state grammar)
+  (and (zero? (earley-state-input-position state))
+       (equal? (context-free-production-rule-nonterminal (earley-state-rule state))
+               (context-free-grammar-start-symbol grammar))))
 
 
 (define (earley-parse grammar token-sequence)
   (define tokens (sequence->vector token-sequence))
   (define token-count (vector-length tokens))
   (define position-count (add1 token-count))
+  (define forest (make-sppf-forest))
   (define states (make-vector position-count (set)))
   (vector-set! states 0 (initial-earley-states grammar))
   (for ([k (in-range 0 position-count)])
@@ -165,7 +253,7 @@
              (if (equal? j k)
                  (set-union unprocessed processed)
                  (vector-ref states j)))
-           (completer-states completed parent-states))
+           (completer-states completed parent-states (earley-state-key next) #:forest forest))
          (define symbol (earley-state-next-symbol next))
          (guard (nonterminal-symbol? symbol) else
            (set))
@@ -177,48 +265,67 @@
     (define processed (process-states (vector-ref states k) (set)))
     (vector-set! states k processed)
     (unless (equal? k token-count)
-      (vector-set! states (add1 k) (scanner-states processed k (vector-ref tokens k)))))
-  states)
+      (define next-states (scanner-states processed k (vector-ref tokens k) #:forest forest))
+      (vector-set! states (add1 k) next-states)))
+
+  (define last-state-set (vector-ref states (sub1 position-count)))
+  (for/first ([s (in-set last-state-set)]
+              #:when (earley-state-represents-successful-parse? s grammar))
+    (sppf-forest-derivations forest (earley-state-key s) tokens)))
 
 
 (define (completed-state? state)
-  (match-define (earley-state rule substitution-position _) state)
+  (match-define (earley-state rule substitution-position _ _) state)
   (equal? substitution-position
           (vector-length (context-free-production-rule-substitution rule))))
 
 
 (define/contract (earley-state-next-symbol state)
   (-> (and/c earley-state? (not/c completed-state?)) grammar-symbol?)
-  (match-define (earley-state rule substitution-position _) state)
+  (match-define (earley-state rule substitution-position _ _) state)
   (vector-ref (context-free-production-rule-substitution rule) substitution-position))
 
 
-(define (earley-state-advance-substitution state)
-  (match-define (earley-state rule substitution-position input-position) state)
-  (earley-state rule (add1 substitution-position) input-position))
+(define (earley-state-advance-substitution state #:key key)
+  (match-define (earley-state rule substitution-position input-position _) state)
+  (earley-state rule (add1 substitution-position) input-position key))
 
 
-(define (completer-states completed-nonterminal states)
+(define (completer-states completed-nonterminal states completed-key #:forest forest)
+  (define expected (nonterminal-symbol completed-nonterminal))
   (for/set ([s (in-set states)]
-            #:when (equal? (earley-state-next-symbol s) (nonterminal-symbol completed-nonterminal)))
-    (earley-state-advance-substitution s)))
+            #:when (equal? (earley-state-next-symbol s) expected))
+    (define rule (earley-state-rule s))
+    (define start (earley-state-input-position s))
+    (define end (sppf-key-input-end completed-key))
+    (define old-key (earley-state-key s))
+    (define new-key
+      (incomplete-sppf-key rule (add1 (earley-state-substitution-position s)) start end))
+    (sppf-forest-add-child-pair! forest new-key #:left old-key #:right completed-key)
+    (earley-state-advance-substitution s #:key new-key)))
 
 
 (define (predictor-states grammar nonterminal k)
   ;; add (Y → • γ, k) for every production in the grammar with Y on the left-hand side
   (for/set ([rule (in-vector (context-free-grammar-rules grammar))]
             #:when (equal? (context-free-production-rule-nonterminal rule) nonterminal))
-    (earley-state rule 0 k)))
+    (earley-state rule 0 k #false)))
 
 
-(define (scanner-states states k next-token)
-  (define type (token-type next-token))
-  (define expected (terminal-symbol type))
+(define (scanner-states states k next-token #:forest forest)
+  (define expected (terminal-symbol (token-type next-token)))
   (for/set ([s (in-set states)]
             #:when (not (completed-state? s))
             #:when (equal? (earley-state-next-symbol s) expected))
-    (earley-state-advance-substitution s)))
-
+    (define rule (earley-state-rule s))
+    (define start (earley-state-input-position s))
+    (define end (add1 k))
+    (define old-key (earley-state-key s))
+    (define new-key
+      (incomplete-sppf-key rule (add1 (earley-state-substitution-position s)) start end))
+    (define scanned-key (complete-sppf-key expected k end))
+    (sppf-forest-add-child-pair! forest new-key #:left old-key #:right scanned-key)
+    (earley-state-advance-substitution s #:key new-key)))
 
 
 (module+ test
@@ -244,45 +351,18 @@
     (define input-tokens
       (list (token 'number 2) (token '+ '+) (token 'number 3) (token '* '*) (token 'number 4)))
 
-    (define arithmetic-parse-table
+    (define arithmetic-parse-forest
       (earley-parse arithmetic-grammar input-tokens))
 
-    (define expected-arithmetic-parse-table
-      (vector
-       (set
-        (earley-state P-rule 0 0)
-        (earley-state S-rule0 0 0)
-        (earley-state S-rule1 0 0)
-        (earley-state M-rule0 0 0)
-        (earley-state M-rule1 0 0)
-        (earley-state T-rule 0 0))
-       (set
-        (earley-state T-rule 1 0)
-        (earley-state M-rule0 1 0)
-        (earley-state M-rule1 1 0)
-        (earley-state S-rule0 1 0)
-        (earley-state S-rule1 1 0)
-        (earley-state P-rule 1 0))
-       (set
-        (earley-state S-rule0 2 0)
-        (earley-state M-rule0 0 2)
-        (earley-state M-rule1 0 2)
-        (earley-state T-rule 0 2))
-       (set
-        (earley-state T-rule 1 2)
-        (earley-state M-rule0 1 2)
-        (earley-state M-rule1 1 2)
-        (earley-state S-rule0 3 0)
-        (earley-state S-rule0 1 0)
-        (earley-state P-rule 1 0))
-       (set
-        (earley-state M-rule0 2 2)
-        (earley-state T-rule 0 4))
-       (set
-        (earley-state T-rule 1 4)
-        (earley-state M-rule0 3 2)
-        (earley-state M-rule0 1 2)
-        (earley-state S-rule0 3 0)
-        (earley-state S-rule0 1 0)
-        (earley-state P-rule 1 0))))
-    (check-equal? arithmetic-parse-table expected-arithmetic-parse-table)))
+    (define expected-arithmetic-parse-tree
+      (derivation
+       'P 0
+       (derivation 'S 0
+                   (derivation 'S 1 (derivation 'M 1 (derivation 'T 0 (derivation 2))))
+                   (derivation '+)
+                   (derivation 'M 0
+                               (derivation 'M 1 (derivation 'T 0 (derivation 3)))
+                               (derivation '*)
+                               (derivation 'T 0 (derivation 4))))))
+    
+    (check-equal? (stream->list arithmetic-parse-forest) (list expected-arithmetic-parse-tree))))
