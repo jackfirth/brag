@@ -141,6 +141,9 @@
   (hash-update! (sppf-forest-hash forest) label (λ (children) (cons pair children)) '()))
 
 
+;; SPPF trees walk each rule down the left side, and each right child of the left spine corresponds to
+;; the rule's components. See https://twitter.com/doitwithalambda/status/1510217894776348681 for a
+;; diagram of the binarised parse tree.
 (struct sppf-child-pair (left-child right-child) #:transparent)
 (struct sppf-key () #:transparent)
 (struct complete-sppf-key sppf-key (symbol input-start input-end) #:transparent)
