@@ -16,14 +16,12 @@
 
 
 ;; Parsing takes a (Grammar T S L) and a sequence of (Token T V) and produces a set of
-;; (Parser-Derivation V S L) (also called a "parse forest"). A grammar contains an immutable
+;; (Parser-Derivation V L) (also called a "parse forest"). A grammar contains an immutable
 ;; vector of (Context-Free-Production-Rule T S L) and a start symbol of type S.
 ;;   T: the terminals the grammar parses. Corresponds to the type field of the input tokens.
-;;   S: the nonterminals the grammar rules are defined in terms of. These show up in parse tree
-;;      branches.
+;;   S: the nonterminals the grammar rules are defined in terms of.
 ;;   L: the lables that grammar rules may have attached to them. These show up in parse tree
-;;      branches alongside nonterminals, and can be used to determine which production rule for a
-;;      particular nonterminal produced a derivation.
+;;      branches, and can be used to determine which production rule produced a derivation.
 (struct context-free-grammar (rules start-symbol) #:transparent)
 
 
@@ -58,17 +56,17 @@
   (context-free-production-rule symbol label (sequence->vector substitution)))
 
 
-;; A (Parser-Derivation V S L) is either a (Terminal-Derivation V) or a (Nonterminal-Derivation T S L)
+;; A (Parser-Derivation V L) is either a (Terminal-Derivation V) or a (Nonterminal-Derivation V L)
 (struct parser-derivation () #:transparent)
 
 ;; A (Terminal-Derivation V) represents a terminal that was matched by the grammar. It contains the
 ;; value of the (Token T V) that was matched.
 (struct terminal-derivation parser-derivation (value) #:transparent)
 
-;; A (Nonterminal-Derivation T S L) represents a nonterminal that was matched by the grammar. It
-;; contains the nonterminal symbol of type T that was matched, the label of type L of the specific
-;; rule that matched, and an immutable vector of subderivations 
-(struct nonterminal-derivation parser-derivation (symbol label children)
+;; A (Nonterminal-Derivation V L) represents a nonterminal that was matched by the grammar. It
+;; contains the label of type L of the production rule that matched, and an immutable vector of
+;; subderivations 
+(struct nonterminal-derivation parser-derivation (label children)
   #:transparent
   #:property prop:custom-print-quotable 'never
   #:methods gen:custom-write
@@ -76,47 +74,18 @@
      (make-constructor-style-printer
       (λ (_) 'nonterminal-derivation)
       (λ (this)
-        (list* (nonterminal-derivation-symbol this)
-               (nonterminal-derivation-label this)
-               (vector->list (nonterminal-derivation-children this))))))])
+        (cons (nonterminal-derivation-label this)
+              (vector->list (nonterminal-derivation-children this))))))])
 
 
-(define (make-nonterminal-derivation symbol label [children '()])
-  (nonterminal-derivation symbol label (sequence->vector children)))
+(define (make-nonterminal-derivation label [children '()])
+  (nonterminal-derivation label (sequence->vector children)))
 
 
 (define derivation
   (case-lambda
     [(value) (terminal-derivation value)]
-    [(symbol label . children) (make-nonterminal-derivation symbol label children)]))
-
-
-(define a (terminal-symbol 'a))
-(define b (terminal-symbol 'b))
-(define S (nonterminal-symbol 'S))
-
-
-(define as-then-bs-grammar
-  (make-grammar
-   #:rules
-   (list
-    (make-rule #:symbol (nonterminal-symbol-value S) #:substitution (list a S b) #:label 'recur)
-    (make-rule #:symbol (nonterminal-symbol-value S) #:substitution (list a b) #:label 'done))
-   #:start-symbol (nonterminal-symbol-value S)))
-
-
-(define input
-  (list (token 'a 'a1) (token 'a 'a2) (token 'a 'a3) (token 'b 'b1) (token 'b 'b2) (token 'b 'b3)))
-
-
-(define expected-parse-tree
-  (derivation 'S 'recur
-              (derivation 'a1)
-              (derivation 'S 'recur
-                          (derivation 'a2)
-                          (derivation 'S 'done (derivation 'a3) (derivation 'b1))
-                          (derivation 'b2))
-              (derivation 'b3)))
+    [(label first-child . children) (make-nonterminal-derivation label (cons first-child children))]))
 
 
 ;; Earley parser
@@ -188,12 +157,11 @@
      (guard (complete-sppf-key? key) then
        (define tok (vector-ref tokens (complete-sppf-key-input-start key)))
        (stream (terminal-derivation (token-value tok))))
-     (define symbol (context-free-production-rule-nonterminal (incomplete-sppf-key-rule key)))
      (define label (context-free-production-rule-label (incomplete-sppf-key-rule key)))
      (define possible-children (possible-children-lists forest key))
      (for*/stream ([children (in-stream possible-children)]
                    [processed-children (in-stream (cartesian-stream (map loop children)))])
-       (make-nonterminal-derivation symbol label processed-children)))))
+       (make-nonterminal-derivation label processed-children)))))
 
 
 (struct earley-state (rule substitution-position input-position key)
@@ -272,9 +240,10 @@
       (vector-set! states (add1 k) next-states)))
 
   (define last-state-set (vector-ref states (sub1 position-count)))
-  (for/first ([s (in-set last-state-set)]
-              #:when (earley-state-represents-successful-parse? s grammar))
-    (sppf-forest-derivations forest (earley-state-key s) tokens)))
+  (apply stream-append
+         (for/list ([s (in-set last-state-set)]
+                    #:when (earley-state-represents-successful-parse? s grammar))
+           (sppf-forest-derivations forest (earley-state-key s) tokens))))
 
 
 (define (completed-state? state)
@@ -335,37 +304,37 @@
   (test-case "earley-parse integration test"
 
     ;; Grammar, input, and states taken from https://en.wikipedia.org/wiki/Earley_parser#Example
-    (define P-rule (make-rule #:symbol 'P #:label 0 #:substitution (list (nonterminal-symbol 'S))))
+    (define P-rule (make-rule #:symbol 'P #:label 'P #:substitution (list (nonterminal-symbol 'S))))
     (define S-rule0
       (make-rule
        #:symbol 'S
-       #:label 0
+       #:label 'S0
        #:substitution (list (nonterminal-symbol 'S) (terminal-symbol '+) (nonterminal-symbol 'M))))
-    (define S-rule1 (make-rule #:symbol 'S #:label 1 #:substitution (list (nonterminal-symbol 'M))))
+    (define S-rule1 (make-rule #:symbol 'S #:label 'S1 #:substitution (list (nonterminal-symbol 'M))))
     (define M-rule0
       (make-rule
        #:symbol 'M
-       #:label 0
+       #:label 'M0
        #:substitution (list (nonterminal-symbol 'M) (terminal-symbol '*) (nonterminal-symbol 'T))))
-    (define M-rule1 (make-rule #:symbol 'M #:label 1 #:substitution (list (nonterminal-symbol 'T))))
-    (define T-rule (make-rule #:symbol 'T #:label 0 #:substitution (list (terminal-symbol 'number))))
+    (define M-rule1 (make-rule #:symbol 'M #:label 'M1 #:substitution (list (nonterminal-symbol 'T))))
+    (define T-rule (make-rule #:symbol 'T #:label 'T #:substitution (list (terminal-symbol 'number))))
     (define arithmetic-grammar
       (make-grammar #:rules (list P-rule S-rule0 S-rule1 M-rule0 M-rule1 T-rule) #:start-symbol 'P))
     (define input-tokens
-      (list (token 'number 2) (token '+ '+) (token 'number 3) (token '* '*) (token 'number 4)))
+      (list (token 'number 2) (token '+ 'plus) (token 'number 3) (token '* 'times) (token 'number 4)))
 
     (define arithmetic-parse-forest
       (earley-parse arithmetic-grammar input-tokens))
 
     (define expected-arithmetic-parse-tree
       (derivation
-       'P 0
-       (derivation 'S 0
-                   (derivation 'S 1 (derivation 'M 1 (derivation 'T 0 (derivation 2))))
-                   (derivation '+)
-                   (derivation 'M 0
-                               (derivation 'M 1 (derivation 'T 0 (derivation 3)))
-                               (derivation '*)
-                               (derivation 'T 0 (derivation 4))))))
+       'P
+       (derivation 'S0
+                   (derivation 'S1 (derivation 'M1 (derivation 'T (derivation 2))))
+                   (derivation 'plus)
+                   (derivation 'M0
+                               (derivation 'M1 (derivation 'T (derivation 3)))
+                               (derivation 'times)
+                               (derivation 'T (derivation 4))))))
     
     (check-equal? (stream->list arithmetic-parse-forest) (list expected-arithmetic-parse-tree))))
