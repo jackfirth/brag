@@ -15,12 +15,15 @@
            rackunit))
 
 
+;@----------------------------------------------------------------------------------------------------
+
+
 ;; Parsing takes a (Grammar T S L) and a sequence of (Token T V) and produces a set of
 ;; (Parser-Derivation V L) (also called a "parse forest"). A grammar contains an immutable
 ;; vector of (Context-Free-Production-Rule T S L) and a start symbol of type S.
 ;;   T: the terminals the grammar parses. Corresponds to the type field of the input tokens.
 ;;   S: the nonterminals the grammar rules are defined in terms of.
-;;   L: the lables that grammar rules may have attached to them. These show up in parse tree
+;;   L: the labels that grammar rules may have attached to them. These show up in parse tree
 ;;      branches, and can be used to determine which production rule produced a derivation.
 (struct context-free-grammar (rules start-symbol) #:transparent)
 
