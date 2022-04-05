@@ -17,6 +17,7 @@
     (-> semantic-action? parser-derivation? #:rest (listof parser-derivation?)
         nonterminal-derivation?))]
   [parser-derivation->syntax (-> parser-derivation? syntax?)]
+  [parser-derivation->datum (-> parser-derivation? any/c)]
   [semantic-action? predicate/c]
   [cut-action cut-action?]
   [cut-action? predicate/c]
@@ -44,6 +45,35 @@
 
 
 ;@----------------------------------------------------------------------------------------------------
+
+
+(define (semantic-action? v)
+  (or (cut-action? v) (splice-action? v) (label-action? v)))
+
+
+(struct cut-action () #:transparent #:constructor-name constructor:cut-action #:omit-define-syntaxes)
+(define cut-action (constructor:cut-action))
+
+
+(struct splice-action ()
+  #:transparent #:constructor-name constructor:splice-action #:omit-define-syntaxes)
+(define splice-action (constructor:splice-action))
+
+
+(struct label-action (value expression-properties properties)
+  #:transparent
+  #:constructor-name constructor:label-action
+  #:omit-define-syntaxes
+  #:guard
+  (struct-guard/c any/c
+                  (hash/c any/c any/c #:immutable #true #:flat? #true)
+                  (hash/c any/c any/c #:immutable #true #:flat? #true)))
+
+
+(define (label-action value
+                      #:properties [properties (hash)]
+                      #:expression-properties [expression-properties (hash)])
+  (constructor:label-action value properties expression-properties))
 
 
 (define (parser-derivation? v)
@@ -144,35 +174,6 @@
          (parser-derivation 2)
          (parser-derivation (label-action 'b) (parser-derivation 3))))
       (check-equal? (parser-derivation-last-terminal derivation) 3))))
-
-
-(define (semantic-action? v)
-  (or (cut-action? v) (splice-action? v) (label-action? v)))
-
-
-(struct cut-action () #:transparent #:constructor-name constructor:cut-action #:omit-define-syntaxes)
-(define cut-action (constructor:cut-action))
-
-
-(struct splice-action ()
-  #:transparent #:constructor-name constructor:splice-action #:omit-define-syntaxes)
-(define splice-action (constructor:splice-action))
-
-
-(struct label-action (value expression-properties properties)
-  #:transparent
-  #:constructor-name constructor:label-action
-  #:omit-define-syntaxes
-  #:guard
-  (struct-guard/c any/c
-                  (hash/c any/c any/c #:immutable #true #:flat? #true)
-                  (hash/c any/c any/c #:immutable #true #:flat? #true)))
-
-
-(define (label-action value
-                      #:properties [properties (hash)]
-                      #:expression-properties [expression-properties (hash)])
-  (constructor:label-action value properties expression-properties))
 
 
 (define (parser-derivation->syntax derivation)
