@@ -102,7 +102,7 @@
      (guard (complete-sppf-key? key) then
        (define tok (vector-ref tokens (complete-sppf-key-input-start key)))
        (stream (terminal-derivation (token-value tok))))
-     (define label (cf-production-rule-label (incomplete-sppf-key-rule key)))
+     (define label (cf-production-rule-action (incomplete-sppf-key-rule key)))
      (define possible-children (possible-children-lists forest key))
      (for*/stream ([children (in-stream possible-children)]
                    [processed-children (in-stream (cartesian-stream (map loop children)))])
@@ -261,26 +261,26 @@
     (test-case "datum parser"
       (define P-rule
         (make-cf-production-rule
-         #:symbol 'P #:label (datum-label 'P) #:substitution (list (nonterminal-symbol 'S))))
+         #:symbol 'P #:action (label-action 'P) #:substitution (list (nonterminal-symbol 'S))))
       (define S-rule0
         (make-cf-production-rule
          #:symbol 'S
-         #:label (datum-label 'S0)
+         #:action (label-action 'S0)
          #:substitution (list (nonterminal-symbol 'S) (terminal-symbol '+) (nonterminal-symbol 'M))))
       (define S-rule1
         (make-cf-production-rule
-         #:symbol 'S #:label (datum-label 'S1) #:substitution (list (nonterminal-symbol 'M))))
+         #:symbol 'S #:action (label-action 'S1) #:substitution (list (nonterminal-symbol 'M))))
       (define M-rule0
         (make-cf-production-rule
          #:symbol 'M
-         #:label (datum-label 'M0)
+         #:action (label-action 'M0)
          #:substitution (list (nonterminal-symbol 'M) (terminal-symbol '*) (nonterminal-symbol 'T))))
       (define M-rule1
         (make-cf-production-rule
-         #:symbol 'M #:label (datum-label 'M1) #:substitution (list (nonterminal-symbol 'T))))
+         #:symbol 'M #:action (label-action 'M1) #:substitution (list (nonterminal-symbol 'T))))
       (define T-rule
         (make-cf-production-rule
-         #:symbol 'T #:label (datum-label 'T) #:substitution (list (terminal-symbol 'number))))
+         #:symbol 'T #:action (label-action 'T) #:substitution (list (terminal-symbol 'number))))
       (define arithmetic-grammar
         (make-cf-grammar
          #:rules (list P-rule S-rule0 S-rule1 M-rule0 M-rule1 T-rule) #:start-symbol 'P))
@@ -290,51 +290,51 @@
       (define parser (earley-parser arithmetic-grammar))
       (define expected-arithmetic-parse-tree
         (parser-derivation
-         (datum-label 'P)
+         (label-action 'P)
          (parser-derivation
-          (datum-label 'S0)
+          (label-action 'S0)
           (parser-derivation
-           (datum-label 'S1)
+           (label-action 'S1)
            (parser-derivation
-            (datum-label 'M1) (parser-derivation (datum-label 'T) (parser-derivation 2))))
+            (label-action 'M1) (parser-derivation (label-action 'T) (parser-derivation 2))))
           (parser-derivation 'plus)
           (parser-derivation
-           (datum-label 'M0)
+           (label-action 'M0)
            (parser-derivation
-            (datum-label 'M1) (parser-derivation (datum-label 'T) (parser-derivation 3)))
+            (label-action 'M1) (parser-derivation (label-action 'T) (parser-derivation 3)))
            (parser-derivation 'times)
-           (parser-derivation (datum-label 'T) (parser-derivation 4))))))
+           (parser-derivation (label-action 'T) (parser-derivation 4))))))
     
       (check-equal? (parse-datum parser input-tokens) expected-arithmetic-parse-tree))
 
     (test-case "syntax parser"
       (define P-rule
         (make-cf-production-rule
-         #:symbol 'P #:label (syntax-label 'P) #:substitution (list (nonterminal-symbol 'S))))
+         #:symbol 'P #:action (label-action 'P) #:substitution (list (nonterminal-symbol 'S))))
 
       (define S-rule0
         (make-cf-production-rule
          #:symbol 'S
-         #:label (syntax-label 'S0)
+         #:action (label-action 'S0)
          #:substitution (list (nonterminal-symbol 'S) (terminal-symbol '+) (nonterminal-symbol 'M))))
 
       (define S-rule1
         (make-cf-production-rule
-         #:symbol 'S #:label (syntax-label 'S1) #:substitution (list (nonterminal-symbol 'M))))
+         #:symbol 'S #:action (label-action 'S1) #:substitution (list (nonterminal-symbol 'M))))
 
       (define M-rule0
         (make-cf-production-rule
          #:symbol 'M
-         #:label (syntax-label 'M0)
+         #:action (label-action 'M0)
          #:substitution (list (nonterminal-symbol 'M) (terminal-symbol '*) (nonterminal-symbol 'T))))
 
       (define M-rule1
         (make-cf-production-rule
-         #:symbol 'M #:label (syntax-label 'M1) #:substitution (list (nonterminal-symbol 'T))))
+         #:symbol 'M #:action (label-action 'M1) #:substitution (list (nonterminal-symbol 'T))))
 
       (define T-rule
         (make-cf-production-rule
-         #:symbol 'T #:label (syntax-label 'T) #:substitution (list (terminal-symbol 'number))))
+         #:symbol 'T #:action (label-action 'T) #:substitution (list (terminal-symbol 'number))))
 
       (define arithmetic-grammar
         (make-cf-grammar

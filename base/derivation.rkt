@@ -7,7 +7,6 @@
 (provide
  (struct-out terminal-derivation)
  (struct-out nonterminal-derivation)
- (struct-out datum-label)
  (contract-out
   [parser-derivation? predicate/c]
   [parser-derivation-first-terminal (-> parser-derivation? any/c)]
@@ -15,19 +14,19 @@
   [parser-derivation
    (case->
     (-> any/c terminal-derivation?)
-    (-> derivation-label? parser-derivation? #:rest (listof parser-derivation?)
+    (-> semantic-action? parser-derivation? #:rest (listof parser-derivation?)
         nonterminal-derivation?))]
   [parser-derivation->syntax (-> parser-derivation? syntax?)]
-  [derivation-label? predicate/c]
-  [cut-label cut-label?]
-  [cut-label? predicate/c]
-  [splice-label splice-label?]
-  [splice-label? predicate/c]
-  [syntax-label? predicate/c]
-  [syntax-label (->* (any/c) (#:properties hash? #:expression-properties hash?) syntax-label?)]
-  [syntax-label-value (-> syntax-label? any/c)]
-  [syntax-label-properties (-> syntax-label? hash?)]
-  [syntax-label-expression-properties (-> syntax-label? hash?)]))
+  [semantic-action? predicate/c]
+  [cut-action cut-action?]
+  [cut-action? predicate/c]
+  [splice-action splice-action?]
+  [splice-action? predicate/c]
+  [label-action? predicate/c]
+  [label-action (->* (any/c) (#:properties hash? #:expression-properties hash?) label-action?)]
+  [label-action-value (-> label-action? any/c)]
+  [label-action-properties (-> label-action? hash?)]
+  [label-action-expression-properties (-> label-action? hash?)]))
 
 
 (require racket/match
@@ -56,16 +55,17 @@
 (struct terminal-derivation (value) #:transparent)
 
 
-;; A (Nonterminal-Derivation V L) represents a nonterminal that was matched by the grammar. It
-;; contains the label of type L of the production rule that matched, and an immutable vector of
-;; subderivations 
-(struct nonterminal-derivation (label children)
+;; A (Nonterminal-Derivation V A) represents a nonterminal that was matched by the grammar. It
+;; contains the action of type (Semantic-Action A) of the production rule that matched, and an
+;; immutable vector of subderivations 
+(struct nonterminal-derivation (action children)
 
   #:guard
-  (let ([contract-guard (struct-guard/c any/c (sequence/c parser-derivation? #:min-count 1))])
-    (λ (label children name)
-      (let-values ([(label children) (contract-guard label children name)])
-        (values label (sequence->vector children)))))
+  (let ([contract-guard
+         (struct-guard/c semantic-action? (sequence/c parser-derivation? #:min-count 1))])
+    (λ (action children name)
+      (let-values ([(action children) (contract-guard action children name)])
+        (values action (sequence->vector children)))))
   
   #:transparent
   #:property prop:custom-print-quotable 'never
@@ -74,14 +74,14 @@
      (make-constructor-style-printer
       (λ (_) 'nonterminal-derivation)
       (λ (this)
-        (cons (nonterminal-derivation-label this)
+        (cons (nonterminal-derivation-action this)
               (vector->list (nonterminal-derivation-children this))))))])
 
 
 (define parser-derivation
   (case-lambda
     [(value) (terminal-derivation value)]
-    [(label first-child . children) (nonterminal-derivation label (cons first-child children))]))
+    [(action first-child . children) (nonterminal-derivation action (cons first-child children))]))
 
 
 (define (parser-derivation-first-terminal derivation)
@@ -107,7 +107,7 @@
     (test-case "nonterminal of terminals"
       (define derivation
         (parser-derivation
-         (datum-label 'a)
+         (label-action 'a)
          (parser-derivation 1)
          (parser-derivation 2)
          (parser-derivation 3)))
@@ -116,8 +116,8 @@
     (test-case "nonterminal of nonterminals and terminals"
       (define derivation
         (parser-derivation
-         (datum-label 'a)
-         (parser-derivation (datum-label 'b) (parser-derivation 1))
+         (label-action 'a)
+         (parser-derivation (label-action 'b) (parser-derivation 1))
          (parser-derivation 2)
          (parser-derivation 3)))
       (check-equal? (parser-derivation-first-terminal derivation) 1)))
@@ -130,7 +130,7 @@
     (test-case "nonterminal of terminals"
       (define derivation
         (parser-derivation
-         (datum-label 'a)
+         (label-action 'a)
          (parser-derivation 1)
          (parser-derivation 2)
          (parser-derivation 3)))
@@ -139,31 +139,29 @@
     (test-case "nonterminal of nonterminals and terminals"
       (define derivation
         (parser-derivation
-         (datum-label 'a)
+         (label-action 'a)
          (parser-derivation 1)
          (parser-derivation 2)
-         (parser-derivation (datum-label 'b) (parser-derivation 3))))
+         (parser-derivation (label-action 'b) (parser-derivation 3))))
       (check-equal? (parser-derivation-last-terminal derivation) 3))))
 
 
-(define (derivation-label? v)
-  (or (cut-label? v) (splice-label? v) (datum-label? v) (syntax-label? v)))
+(define (semantic-action? v)
+  (or (cut-action? v) (splice-action? v) (label-action? v)))
 
 
-(struct cut-label () #:transparent #:constructor-name constructor:cut-label #:omit-define-syntaxes)
-(define cut-label (constructor:cut-label))
+(struct cut-action () #:transparent #:constructor-name constructor:cut-action #:omit-define-syntaxes)
+(define cut-action (constructor:cut-action))
 
 
-(struct splice-label ()
-  #:transparent #:constructor-name constructor:splice-label #:omit-define-syntaxes)
-(define splice-label (constructor:splice-label))
+(struct splice-action ()
+  #:transparent #:constructor-name constructor:splice-action #:omit-define-syntaxes)
+(define splice-action (constructor:splice-action))
 
 
-(struct datum-label (value) #:transparent)
-
-(struct syntax-label (value expression-properties properties)
+(struct label-action (value expression-properties properties)
   #:transparent
-  #:constructor-name constructor:syntax-label
+  #:constructor-name constructor:label-action
   #:omit-define-syntaxes
   #:guard
   (struct-guard/c any/c
@@ -171,22 +169,22 @@
                   (hash/c any/c any/c #:immutable #true #:flat? #true)))
 
 
-(define (syntax-label value
+(define (label-action value
                       #:properties [properties (hash)]
                       #:expression-properties [expression-properties (hash)])
-  (constructor:syntax-label value properties expression-properties))
+  (constructor:label-action value properties expression-properties))
 
 
 (define (parser-derivation->syntax derivation)
   (define (->splice derivation)
     (match derivation
       [(terminal-derivation t) (list (syntax-token->syntax t))]
-      [(nonterminal-derivation (? cut-label?) _) '()]
-      [(nonterminal-derivation (? splice-label?) children)
+      [(nonterminal-derivation (? cut-action?) _) '()]
+      [(nonterminal-derivation (? splice-action?) children)
        (for*/list ([child (in-vector children)]
                    [stx (in-list (->splice child))])
          stx)]
-      [(nonterminal-derivation (? syntax-label? label) children)
+      [(nonterminal-derivation (? label-action? label) children)
        (define first-token (parser-derivation-first-terminal derivation))
        (define label-location
          (srcloc (syntax-token-source first-token)
@@ -195,8 +193,8 @@
                  (syntax-token-position first-token)
                  0))
        (define label-stx
-         (for/fold ([stx (datum->syntax #false (syntax-label-value label) label-location #false)])
-                   ([(key value) (in-hash (syntax-label-properties label))])
+         (for/fold ([stx (datum->syntax #false (label-action-value label) label-location #false)])
+                   ([(key value) (in-hash (label-action-properties label))])
            (syntax-property stx key value)))
        (define children-syntaxes
          (for*/list ([child (in-vector children)]
@@ -212,7 +210,7 @@
        (define expression-stx
          (datum->syntax #false (cons label-stx children-syntaxes) expression-location #false))
        (list (for/fold ([expression-stx expression-stx])
-                       ([(key value) (in-hash (syntax-label-expression-properties label))])
+                       ([(key value) (in-hash (label-action-expression-properties label))])
                (syntax-property expression-stx key value)))]))
   (define first-token (parser-derivation-first-terminal derivation))
   (define last-token (parser-derivation-last-terminal derivation))
@@ -231,12 +229,13 @@
   (define (->splice derivation)
     (match derivation
       [(terminal-derivation t) (list t)]
-      [(nonterminal-derivation (? cut-label?) _) '()]
-      [(nonterminal-derivation (? splice-label?) children)
+      [(nonterminal-derivation (? cut-action?) _) '()]
+      [(nonterminal-derivation (? splice-action?) children)
        (for*/list ([child (in-vector children)]
                    [datum (in-list (->splice child))])
          datum)]
-      [(nonterminal-derivation (datum-label value) children)
+      [(nonterminal-derivation (? label-action? label) children)
+       (define value (label-action-value label))
        (define child-data
          (for*/list ([child (in-vector children)]
                      [spliced-child (in-list (->splice child))])
@@ -256,7 +255,7 @@
 
     (test-case "datum nonterminals"
       (define derivation
-        (parser-derivation (datum-label 'a)
+        (parser-derivation (label-action 'a)
                            (parser-derivation 'b)
                            (parser-derivation 'c)
                            (parser-derivation 'd)))
@@ -264,17 +263,17 @@
 
     (test-case "datum cuts"
       (define derivation
-        (parser-derivation (datum-label 'a)
-                           (parser-derivation cut-label (parser-derivation 'b))
+        (parser-derivation (label-action 'a)
+                           (parser-derivation cut-action (parser-derivation 'b))
                            (parser-derivation 'c)
-                           (parser-derivation cut-label (parser-derivation 'd))))
+                           (parser-derivation cut-action (parser-derivation 'd))))
       (check-equal? (parser-derivation->datum derivation) '(a c)))
 
     (test-case "datum splices"
       (define derivation
-        (parser-derivation (datum-label 'a)
+        (parser-derivation (label-action 'a)
                            (parser-derivation 'b)
-                           (parser-derivation splice-label
+                           (parser-derivation splice-action
                                               (parser-derivation 'c1)
                                               (parser-derivation 'c2)
                                               (parser-derivation 'c3))
@@ -292,7 +291,7 @@
     (test-case "syntax nonterminals"
       (define derivation
         (parser-derivation
-         (syntax-label 'a)
+         (label-action 'a)
          (parser-derivation (syntax-token 'b #:position 1 #:span 1))
          (parser-derivation (syntax-token 'c #:position 2 #:span 1))
          (parser-derivation (syntax-token 'd #:position 3 #:span 1))))
@@ -303,10 +302,10 @@
     (test-case "syntax cuts"
       (define derivation
         (parser-derivation
-         (syntax-label 'a)
-         (parser-derivation cut-label (parser-derivation (syntax-token 'b #:position 1 #:span 1)))
+         (label-action 'a)
+         (parser-derivation cut-action (parser-derivation (syntax-token 'b #:position 1 #:span 1)))
          (parser-derivation (syntax-token 'c #:position 2 #:span 1))
-         (parser-derivation cut-label (parser-derivation (syntax-token 'd #:position 3 #:span 1)))))
+         (parser-derivation cut-action (parser-derivation (syntax-token 'd #:position 3 #:span 1)))))
       (define actual (parser-derivation->syntax derivation))
       (check-equal? (syntax->datum actual) '(a c))
       (check-equal? (syntax-srcloc actual) (srcloc #false #false #false 1 3)))
@@ -314,9 +313,9 @@
     (test-case "syntax splices"
       (define derivation
         (parser-derivation
-         (syntax-label 'a)
+         (label-action 'a)
          (parser-derivation (syntax-token 'b #:position 1 #:span 1))
-         (parser-derivation splice-label
+         (parser-derivation splice-action
                             (parser-derivation (syntax-token 'c1 #:position 2 #:span 1))
                             (parser-derivation (syntax-token 'c2 #:position 3 #:span 1))
                             (parser-derivation (syntax-token 'c3 #:position 4 #:span 1)))

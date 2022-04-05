@@ -14,7 +14,7 @@
   [cf-grammar-start-rules (-> cf-grammar? (set/c cf-production-rule? #:kind 'immutable))]
   [make-cf-grammar (-> #:rules (sequence/c cf-production-rule?) #:start-symbol any/c cf-grammar?)]
   [make-cf-production-rule
-   (-> #:symbol any/c #:substitution (sequence/c grammar-symbol?) #:label derivation-label?
+   (-> #:symbol any/c #:substitution (sequence/c grammar-symbol?) #:action semantic-action?
        cf-production-rule?)]))
 
 
@@ -27,13 +27,14 @@
 ;@----------------------------------------------------------------------------------------------------
 
 
-;; Parsing takes a (Grammar T S L) and a sequence of (Token T V) and produces a set of
-;; (Parser-Derivation V L) (also called a "parse forest"). A grammar contains an immutable
-;; vector of (Context-Free-Production-Rule T S L) and a start symbol of type S.
+;; Parsing takes a (Grammar T S A) and a sequence of (Token T V) and produces a set of
+;; (Parser-Derivation V A) (also called a "parse forest"). A grammar contains an immutable
+;; vector of (Context-Free-Production-Rule T S A) and a start symbol of type S.
 ;;   T: the terminals the grammar parses. Corresponds to the type field of the input tokens.
 ;;   S: the nonterminals the grammar rules are defined in terms of.
-;;   L: the labels that grammar rules may have attached to them. These show up in parse tree
-;;      branches, and can be used to determine which production rule produced a derivation.
+;;   A: the labels that grammar rules may have attached to them via the (Label-Action A) semantic
+;;      action. These show up in parse tree branches, and can be used to determine which production
+;;      rule produced a derivation.
 (struct cf-grammar (rules start-symbol) #:transparent)
 
 
@@ -44,9 +45,10 @@
     rule))
 
 
-;; A (Context-Free-Production-Rule T S L) contains a nonterminal symbol of type S, a label of type L,
-;; and a substitution sequence of (Grammar-Symbol T S) values, stored in an immutable vector.
-(struct cf-production-rule (nonterminal label substitution) #:transparent)
+;; A (Context-Free-Production-Rule T S A) contains a nonterminal symbol of type S, semantic action of
+;; type (Semnatic-Action A), and a substitution sequence of (Grammar-Symbol T S) values, stored in an
+;; immutable vector.
+(struct cf-production-rule (nonterminal action substitution) #:transparent)
 
 
 ;; A (Grammar-Symbol T S) is either a (Terminal-Symbol T) or a (Nonterminal-Symbol S)
@@ -62,5 +64,5 @@
   (cf-grammar (sequence->vector rules) start))
 
 
-(define (make-cf-production-rule #:symbol symbol #:substitution substitution #:label label)
-  (cf-production-rule symbol label (sequence->vector substitution)))
+(define (make-cf-production-rule #:symbol symbol #:substitution substitution #:action action)
+  (cf-production-rule symbol action (sequence->vector substitution)))
