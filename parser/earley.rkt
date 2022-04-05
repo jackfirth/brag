@@ -1,6 +1,14 @@
 #lang racket/base
 
 
+(require racket/contract/base)
+
+
+(provide
+ (contract-out
+  [earley-parser (-> context-free-grammar? parser?)]))
+
+
 (require racket/contract
          racket/match
          racket/set
@@ -9,7 +17,10 @@
          rebellion/collection/vector
          rebellion/private/guarded-block
          yaragg/base/derivation
-         yaragg/base/token)
+         yaragg/base/grammar
+         yaragg/base/token
+         yaragg/parser
+         (submod yaragg/parser private))
 
 
 (module+ test
@@ -20,43 +31,9 @@
 ;@----------------------------------------------------------------------------------------------------
 
 
-;; Parsing takes a (Grammar T S L) and a sequence of (Token T V) and produces a set of
-;; (Parser-Derivation V L) (also called a "parse forest"). A grammar contains an immutable
-;; vector of (Context-Free-Production-Rule T S L) and a start symbol of type S.
-;;   T: the terminals the grammar parses. Corresponds to the type field of the input tokens.
-;;   S: the nonterminals the grammar rules are defined in terms of.
-;;   L: the labels that grammar rules may have attached to them. These show up in parse tree
-;;      branches, and can be used to determine which production rule produced a derivation.
-(struct context-free-grammar (rules start-symbol) #:transparent)
-
-
-(define (grammar-start-rules grammar)
-  (define start (context-free-grammar-start-symbol grammar))
-  (for/set ([rule (in-vector (context-free-grammar-rules grammar))]
-            #:when (equal? (context-free-production-rule-nonterminal rule) start))
-    rule))
-
-
-;; A (Context-Free-Production-Rule T S L) contains a nonterminal symbol of type S, a label of type L,
-;; and a substitution sequence of (Grammar-Symbol T S) values, stored in an immutable vector.
-(struct context-free-production-rule (nonterminal label substitution) #:transparent)
-
-
-;; A (Grammar-Symbol T S) is either a (Terminal-Symbol T) or a (Nonterminal-Symbol S)
-(struct grammar-symbol () #:transparent)
-(struct terminal-symbol grammar-symbol (value) #:transparent)
-(struct nonterminal-symbol grammar-symbol (value) #:transparent)
-
-
-(define (make-grammar #:rules rules #:start-symbol start)
-  (context-free-grammar (sequence->vector rules) start))
-
-
-(define (make-rule #:symbol symbol #:substitution substitution #:label label)
-  (context-free-production-rule symbol label (sequence->vector substitution)))
-
-
-;; Earley parser
+(define (earley-parser grammar)
+  (make-parser #:datum-function (λ (tokens) (earley-parse-datum grammar tokens))
+               #:syntax-function (λ (tokens) (earley-parse-syntax grammar tokens))))
 
 
 ;; The hash keys are sppf-labels and the values are a list of sppf-child-pairs
@@ -167,7 +144,7 @@
                (context-free-grammar-start-symbol grammar))))
 
 
-(define (earley-parse grammar token-sequence)
+(define (earley-parse-datum grammar token-sequence)
   (define tokens (sequence->vector token-sequence))
   (define token-count (vector-length tokens))
   (define position-count (add1 token-count))
@@ -268,96 +245,100 @@
     (earley-state-advance-substitution s #:key new-key)))
 
 
-(define (grammar-parse-to-syntax grammar token-sequence)
+(define (earley-parse-syntax grammar token-sequence)
   (define tokens
     (for/vector ([t token-sequence])
       (token (syntax-token-type t) t)))
-  (for/set ([derivation (in-set (earley-parse grammar tokens))])
+  (for/set ([derivation (in-set (earley-parse-datum grammar tokens))])
     (parser-derivation->syntax derivation)))
 
 
 (module+ test
-  (test-case "earley-parse integration test"
+  (test-case "earley-parser integration test"
 
-    ;; Grammar, input, and states taken from https://en.wikipedia.org/wiki/Earley_parser#Example
-    (define P-rule (make-rule #:symbol 'P #:label 'P #:substitution (list (nonterminal-symbol 'S))))
-    (define S-rule0
-      (make-rule
-       #:symbol 'S
-       #:label 'S0
-       #:substitution (list (nonterminal-symbol 'S) (terminal-symbol '+) (nonterminal-symbol 'M))))
-    (define S-rule1 (make-rule #:symbol 'S #:label 'S1 #:substitution (list (nonterminal-symbol 'M))))
-    (define M-rule0
-      (make-rule
-       #:symbol 'M
-       #:label 'M0
-       #:substitution (list (nonterminal-symbol 'M) (terminal-symbol '*) (nonterminal-symbol 'T))))
-    (define M-rule1 (make-rule #:symbol 'M #:label 'M1 #:substitution (list (nonterminal-symbol 'T))))
-    (define T-rule (make-rule #:symbol 'T #:label 'T #:substitution (list (terminal-symbol 'number))))
-    (define arithmetic-grammar
-      (make-grammar #:rules (list P-rule S-rule0 S-rule1 M-rule0 M-rule1 T-rule) #:start-symbol 'P))
-    (define input-tokens
-      (list (token 'number 2) (token '+ 'plus) (token 'number 3) (token '* 'times) (token 'number 4)))
+    ;; Grammar and input taken from https://en.wikipedia.org/wiki/Earley_parser#Example
 
-    (define arithmetic-parse-forest
-      (earley-parse arithmetic-grammar input-tokens))
-
-    (define expected-arithmetic-parse-tree
-      (parser-derivation
-       'P
-       (parser-derivation
-        'S0
-        (parser-derivation 'S1 (parser-derivation 'M1 (parser-derivation 'T (parser-derivation 2))))
-        (parser-derivation 'plus)
+    (test-case "datum parser"
+      (define P-rule (make-rule #:symbol 'P #:label 'P #:substitution (list (nonterminal-symbol 'S))))
+      (define S-rule0
+        (make-rule
+         #:symbol 'S
+         #:label 'S0
+         #:substitution (list (nonterminal-symbol 'S) (terminal-symbol '+) (nonterminal-symbol 'M))))
+      (define S-rule1
+        (make-rule #:symbol 'S #:label 'S1 #:substitution (list (nonterminal-symbol 'M))))
+      (define M-rule0
+        (make-rule
+         #:symbol 'M
+         #:label 'M0
+         #:substitution (list (nonterminal-symbol 'M) (terminal-symbol '*) (nonterminal-symbol 'T))))
+      (define M-rule1
+        (make-rule #:symbol 'M #:label 'M1 #:substitution (list (nonterminal-symbol 'T))))
+      (define T-rule
+        (make-rule #:symbol 'T #:label 'T #:substitution (list (terminal-symbol 'number))))
+      (define arithmetic-grammar
+        (make-grammar #:rules (list P-rule S-rule0 S-rule1 M-rule0 M-rule1 T-rule) #:start-symbol 'P))
+      (define input-tokens
+        (list
+         (token 'number 2) (token '+ 'plus) (token 'number 3) (token '* 'times) (token 'number 4)))
+      (define parser (earley-parser arithmetic-grammar))
+      (define expected-arithmetic-parse-tree
         (parser-derivation
-         'M0
-         (parser-derivation 'M1 (parser-derivation 'T (parser-derivation 3)))
-         (parser-derivation 'times)
-         (parser-derivation 'T (parser-derivation 4))))))
+         'P
+         (parser-derivation
+          'S0
+          (parser-derivation 'S1 (parser-derivation 'M1 (parser-derivation 'T (parser-derivation 2))))
+          (parser-derivation 'plus)
+          (parser-derivation
+           'M0
+           (parser-derivation 'M1 (parser-derivation 'T (parser-derivation 3)))
+           (parser-derivation 'times)
+           (parser-derivation 'T (parser-derivation 4))))))
     
-    (check-equal? arithmetic-parse-forest (set expected-arithmetic-parse-tree))))
+      (check-equal? (parse-datum parser input-tokens) expected-arithmetic-parse-tree))
+
+    (test-case "syntax parser"
+      (define P-rule
+        (make-rule
+         #:symbol 'P #:label (syntax-label 'P) #:substitution (list (nonterminal-symbol 'S))))
+
+      (define S-rule0
+        (make-rule
+         #:symbol 'S
+         #:label (syntax-label 'S0)
+         #:substitution (list (nonterminal-symbol 'S) (terminal-symbol '+) (nonterminal-symbol 'M))))
+
+      (define S-rule1
+        (make-rule
+         #:symbol 'S #:label (syntax-label 'S1) #:substitution (list (nonterminal-symbol 'M))))
+
+      (define M-rule0
+        (make-rule
+         #:symbol 'M
+         #:label (syntax-label 'M0)
+         #:substitution (list (nonterminal-symbol 'M) (terminal-symbol '*) (nonterminal-symbol 'T))))
+
+      (define M-rule1
+        (make-rule
+         #:symbol 'M #:label (syntax-label 'M1) #:substitution (list (nonterminal-symbol 'T))))
+
+      (define T-rule
+        (make-rule
+         #:symbol 'T #:label (syntax-label 'T) #:substitution (list (terminal-symbol 'number))))
+
+      (define arithmetic-grammar
+        (make-grammar #:rules (list P-rule S-rule0 S-rule1 M-rule0 M-rule1 T-rule) #:start-symbol 'P))
 
 
-;; Grammar, input, and states taken from https://en.wikipedia.org/wiki/Earley_parser#Example
-(define P-rule
-  (make-rule #:symbol 'P #:label (syntax-label 'P) #:substitution (list (nonterminal-symbol 'S))))
+      (define input-tokens
+        (list
+         (syntax-token 'number 2 #:position 1 #:span 1)
+         (syntax-token '+ #:position 2 #:span 1)
+         (syntax-token 'number 3 #:position 3 #:span 1)
+         (syntax-token '* #:position 4 #:span 1)
+         (syntax-token 'number 4 #:position 5 #:span 1)))
 
-(define S-rule0
-  (make-rule
-   #:symbol 'S
-   #:label (syntax-label 'S0)
-   #:substitution (list (nonterminal-symbol 'S) (terminal-symbol '+) (nonterminal-symbol 'M))))
+      (define parser (earley-parser arithmetic-grammar))
 
-(define S-rule1
-  (make-rule #:symbol 'S #:label (syntax-label 'S1) #:substitution (list (nonterminal-symbol 'M))))
-
-(define M-rule0
-  (make-rule
-   #:symbol 'M
-   #:label (syntax-label 'M0)
-   #:substitution (list (nonterminal-symbol 'M) (terminal-symbol '*) (nonterminal-symbol 'T))))
-
-(define M-rule1
-  (make-rule #:symbol 'M #:label (syntax-label 'M1) #:substitution (list (nonterminal-symbol 'T))))
-
-(define T-rule
-  (make-rule #:symbol 'T #:label (syntax-label 'T) #:substitution (list (terminal-symbol 'number))))
-
-(define arithmetic-grammar
-  (make-grammar #:rules (list P-rule S-rule0 S-rule1 M-rule0 M-rule1 T-rule) #:start-symbol 'P))
-
-
-(define input-tokens
-  (list
-   (syntax-token 'number 2 #:position 1 #:span 1)
-   (syntax-token '+ #:position 2 #:span 1)
-   (syntax-token 'number 3 #:position 3 #:span 1)
-   (syntax-token '* #:position 4 #:span 1)
-   (syntax-token 'number 4 #:position 5 #:span 1)))
-
-
-(grammar-parse-to-syntax arithmetic-grammar input-tokens)
-
-
-(define arithmetic-parse-forest
-  (grammar-parse-to-syntax arithmetic-grammar input-tokens))
+      (check-equal? (syntax->datum (parse-syntax parser input-tokens))
+                    '(P (S0 (S1 (M1 (T 2))) + (M0 (M1 (T 3)) * (T 4))))))))
