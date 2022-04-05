@@ -7,7 +7,9 @@
          racket/stream
          racket/struct
          rebellion/collection/vector
-         rebellion/private/guarded-block)
+         rebellion/private/guarded-block
+         yaragg/base/derivation
+         yaragg/base/token)
 
 
 (module+ test
@@ -35,11 +37,6 @@
     rule))
 
 
-;; A (Token T V) is a tagged value. The grammar rules are defined in terms of the type tag,
-;; whereas the value is what appears in leaf nodes of the resulting parse trees.
-(struct token (type value) #:transparent)
-
-
 ;; A (Context-Free-Production-Rule T S L) contains a nonterminal symbol of type S, a label of type L,
 ;; and a substitution sequence of (Grammar-Symbol T S) values, stored in an immutable vector.
 (struct context-free-production-rule (nonterminal label substitution) #:transparent)
@@ -57,38 +54,6 @@
 
 (define (make-rule #:symbol symbol #:substitution substitution #:label label)
   (context-free-production-rule symbol label (sequence->vector substitution)))
-
-
-;; A (Parser-Derivation V L) is either a (Terminal-Derivation V) or a (Nonterminal-Derivation V L)
-(struct parser-derivation () #:transparent)
-
-;; A (Terminal-Derivation V) represents a terminal that was matched by the grammar. It contains the
-;; value of the (Token T V) that was matched.
-(struct terminal-derivation parser-derivation (value) #:transparent)
-
-;; A (Nonterminal-Derivation V L) represents a nonterminal that was matched by the grammar. It
-;; contains the label of type L of the production rule that matched, and an immutable vector of
-;; subderivations 
-(struct nonterminal-derivation parser-derivation (label children)
-  #:transparent
-  #:property prop:custom-print-quotable 'never
-  #:methods gen:custom-write
-  [(define write-proc
-     (make-constructor-style-printer
-      (λ (_) 'nonterminal-derivation)
-      (λ (this)
-        (cons (nonterminal-derivation-label this)
-              (vector->list (nonterminal-derivation-children this))))))])
-
-
-(define (make-nonterminal-derivation label [children '()])
-  (nonterminal-derivation label (sequence->vector children)))
-
-
-(define derivation
-  (case-lambda
-    [(value) (terminal-derivation value)]
-    [(label first-child . children) (make-nonterminal-derivation label (cons first-child children))]))
 
 
 ;; Earley parser
@@ -164,7 +129,7 @@
      (define possible-children (possible-children-lists forest key))
      (for*/stream ([children (in-stream possible-children)]
                    [processed-children (in-stream (cartesian-stream (map loop children)))])
-       (make-nonterminal-derivation label processed-children)))))
+       (nonterminal-derivation label processed-children)))))
 
 
 (struct earley-state (rule substitution-position input-position key)
@@ -330,14 +295,56 @@
       (earley-parse arithmetic-grammar input-tokens))
 
     (define expected-arithmetic-parse-tree
-      (derivation
+      (parser-derivation
        'P
-       (derivation 'S0
-                   (derivation 'S1 (derivation 'M1 (derivation 'T (derivation 2))))
-                   (derivation 'plus)
-                   (derivation 'M0
-                               (derivation 'M1 (derivation 'T (derivation 3)))
-                               (derivation 'times)
-                               (derivation 'T (derivation 4))))))
+       (parser-derivation 'S0
+                          (parser-derivation 'S1 (parser-derivation 'M1 (parser-derivation 'T (parser-derivation 2))))
+                          (parser-derivation 'plus)
+                          (parser-derivation 'M0
+                                             (parser-derivation 'M1 (parser-derivation 'T (parser-derivation 3)))
+                                             (parser-derivation 'times)
+                                             (parser-derivation 'T (parser-derivation 4))))))
     
     (check-equal? (stream->list arithmetic-parse-forest) (list expected-arithmetic-parse-tree))))
+
+
+(struct cf-syntax-production-rule (nonterminal label substitution properties label-properties)
+  #:transparent)
+
+
+(struct syntax-label (value expression-properties properties) #:transparent)
+
+
+(define (grammar-parse-to-syntax grammar token-sequence)
+  (define tokens
+    (for/vector ([t token-sequence])
+      (token (syntax-token-type t) t)))
+  (for/set ([derivation (in-set (earley-parse tokens))])
+    (derivation->syntax derivation)))
+
+
+(define (derivation->syntax derivation)
+  (match derivation
+    [(terminal-derivation t) (syntax-token->syntax t)]
+    [(nonterminal-derivation label children)
+     (define first-token (parser-derivation-first-terminal derivation))
+     (define last-token (parser-derivation-last-terminal derivation))
+     (define location
+       (srcloc (syntax-token-source first-token)
+               (syntax-token-line first-token)
+               (syntax-token-column first-token)
+               (syntax-token-position first-token)
+               (- (syntax-token-position first-token) (syntax-token-end-position last-token))))
+     (define label-location
+       (srcloc (syntax-token-source first-token)
+               (syntax-token-line first-token)
+               (syntax-token-column first-token)
+               (syntax-token-position first-token)
+               0))
+     (define label-stx
+       (for/fold ([stx (datum->syntax #false (syntax-label-value label) label-location #false)])
+                 ([(key value) (in-hash (syntax-label-properties label))])
+         (syntax-property stx key value)))
+     (for/fold ([stx (datum->syntax #false (cons label-stx children) location #false)])
+               ([(key value) (in-hash (syntax-label-expression-properties label))])
+       (syntax-property stx key value))]))
