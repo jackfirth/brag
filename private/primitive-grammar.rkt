@@ -208,10 +208,10 @@
       (vector-set! states (add1 k) next-states)))
 
   (define last-state-set (vector-ref states (sub1 position-count)))
-  (apply stream-append
-         (for/list ([s (in-set last-state-set)]
-                    #:when (earley-state-represents-successful-parse? s grammar))
-           (sppf-forest-derivations forest (earley-state-key s) tokens))))
+  (for/set ([s (in-set last-state-set)]
+            #:when (earley-state-represents-successful-parse? s grammar)
+            [derivation (in-stream (sppf-forest-derivations forest (earley-state-key s) tokens))])
+    derivation))
 
 
 (define (completed-state? state)
@@ -268,6 +268,14 @@
     (earley-state-advance-substitution s #:key new-key)))
 
 
+(define (grammar-parse-to-syntax grammar token-sequence)
+  (define tokens
+    (for/vector ([t token-sequence])
+      (token (syntax-token-type t) t)))
+  (for/set ([derivation (in-set (earley-parse grammar tokens))])
+    (parser-derivation->syntax derivation)))
+
+
 (module+ test
   (test-case "earley-parse integration test"
 
@@ -297,54 +305,59 @@
     (define expected-arithmetic-parse-tree
       (parser-derivation
        'P
-       (parser-derivation 'S0
-                          (parser-derivation 'S1 (parser-derivation 'M1 (parser-derivation 'T (parser-derivation 2))))
-                          (parser-derivation 'plus)
-                          (parser-derivation 'M0
-                                             (parser-derivation 'M1 (parser-derivation 'T (parser-derivation 3)))
-                                             (parser-derivation 'times)
-                                             (parser-derivation 'T (parser-derivation 4))))))
+       (parser-derivation
+        'S0
+        (parser-derivation 'S1 (parser-derivation 'M1 (parser-derivation 'T (parser-derivation 2))))
+        (parser-derivation 'plus)
+        (parser-derivation
+         'M0
+         (parser-derivation 'M1 (parser-derivation 'T (parser-derivation 3)))
+         (parser-derivation 'times)
+         (parser-derivation 'T (parser-derivation 4))))))
     
-    (check-equal? (stream->list arithmetic-parse-forest) (list expected-arithmetic-parse-tree))))
+    (check-equal? arithmetic-parse-forest (set expected-arithmetic-parse-tree))))
 
 
-(struct cf-syntax-production-rule (nonterminal label substitution properties label-properties)
-  #:transparent)
+;; Grammar, input, and states taken from https://en.wikipedia.org/wiki/Earley_parser#Example
+(define P-rule
+  (make-rule #:symbol 'P #:label (syntax-label 'P) #:substitution (list (nonterminal-symbol 'S))))
+
+(define S-rule0
+  (make-rule
+   #:symbol 'S
+   #:label (syntax-label 'S0)
+   #:substitution (list (nonterminal-symbol 'S) (terminal-symbol '+) (nonterminal-symbol 'M))))
+
+(define S-rule1
+  (make-rule #:symbol 'S #:label (syntax-label 'S1) #:substitution (list (nonterminal-symbol 'M))))
+
+(define M-rule0
+  (make-rule
+   #:symbol 'M
+   #:label (syntax-label 'M0)
+   #:substitution (list (nonterminal-symbol 'M) (terminal-symbol '*) (nonterminal-symbol 'T))))
+
+(define M-rule1
+  (make-rule #:symbol 'M #:label (syntax-label 'M1) #:substitution (list (nonterminal-symbol 'T))))
+
+(define T-rule
+  (make-rule #:symbol 'T #:label (syntax-label 'T) #:substitution (list (terminal-symbol 'number))))
+
+(define arithmetic-grammar
+  (make-grammar #:rules (list P-rule S-rule0 S-rule1 M-rule0 M-rule1 T-rule) #:start-symbol 'P))
 
 
-(struct syntax-label (value expression-properties properties) #:transparent)
+(define input-tokens
+  (list
+   (syntax-token 'number 2 #:position 1 #:span 1)
+   (syntax-token '+ #:position 2 #:span 1)
+   (syntax-token 'number 3 #:position 3 #:span 1)
+   (syntax-token '* #:position 4 #:span 1)
+   (syntax-token 'number 4 #:position 5 #:span 1)))
 
 
-(define (grammar-parse-to-syntax grammar token-sequence)
-  (define tokens
-    (for/vector ([t token-sequence])
-      (token (syntax-token-type t) t)))
-  (for/set ([derivation (in-set (earley-parse tokens))])
-    (derivation->syntax derivation)))
+(grammar-parse-to-syntax arithmetic-grammar input-tokens)
 
 
-(define (derivation->syntax derivation)
-  (match derivation
-    [(terminal-derivation t) (syntax-token->syntax t)]
-    [(nonterminal-derivation label children)
-     (define first-token (parser-derivation-first-terminal derivation))
-     (define last-token (parser-derivation-last-terminal derivation))
-     (define location
-       (srcloc (syntax-token-source first-token)
-               (syntax-token-line first-token)
-               (syntax-token-column first-token)
-               (syntax-token-position first-token)
-               (- (syntax-token-position first-token) (syntax-token-end-position last-token))))
-     (define label-location
-       (srcloc (syntax-token-source first-token)
-               (syntax-token-line first-token)
-               (syntax-token-column first-token)
-               (syntax-token-position first-token)
-               0))
-     (define label-stx
-       (for/fold ([stx (datum->syntax #false (syntax-label-value label) label-location #false)])
-                 ([(key value) (in-hash (syntax-label-properties label))])
-         (syntax-property stx key value)))
-     (for/fold ([stx (datum->syntax #false (cons label-stx children) location #false)])
-               ([(key value) (in-hash (syntax-label-expression-properties label))])
-       (syntax-property stx key value))]))
+(define arithmetic-parse-forest
+  (grammar-parse-to-syntax arithmetic-grammar input-tokens))
