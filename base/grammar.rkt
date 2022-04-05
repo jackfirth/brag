@@ -14,13 +14,14 @@
   [cf-grammar-start-rules (-> cf-grammar? (set/c cf-production-rule? #:kind 'immutable))]
   [make-cf-grammar (-> #:rules (sequence/c cf-production-rule?) #:start-symbol any/c cf-grammar?)]
   [make-cf-production-rule
-   (-> #:symbol any/c #:substitution (sequence/c grammar-symbol?) #:label any/c
+   (-> #:symbol any/c #:substitution (sequence/c grammar-symbol?) #:label derivation-label?
        cf-production-rule?)]))
 
 
 (require racket/sequence
          racket/set
-         rebellion/collection/vector)
+         rebellion/collection/vector
+         yaragg/base/derivation)
 
 
 ;@----------------------------------------------------------------------------------------------------

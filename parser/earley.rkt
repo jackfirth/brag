@@ -36,7 +36,7 @@
                #:syntax-function (λ (tokens) (earley-parse-syntax grammar tokens))))
 
 
-;; The hash keys are sppf-labels and the values are a list of sppf-child-pairs
+;; The hash keys are sppf-keys and the values are a list of sppf-child-pairs
 (struct sppf-forest (hash))
 
 
@@ -44,15 +44,15 @@
   (sppf-forest (make-hash)))
 
 
-(define (sppf-forest-add-node! forest label)
+(define (sppf-forest-add-node! forest key)
   (define h (sppf-forest-hash forest))
-  (unless (hash-has-key? h label)
-    (hash-set! h label '())))
+  (unless (hash-has-key? h key)
+    (hash-set! h key '())))
 
 
-(define (sppf-forest-add-child-pair! forest label #:left left-child #:right right-child)
+(define (sppf-forest-add-child-pair! forest key #:left left-child #:right right-child)
   (define pair (sppf-child-pair left-child right-child))
-  (hash-update! (sppf-forest-hash forest) label (λ (children) (cons pair children)) '()))
+  (hash-update! (sppf-forest-hash forest) key (λ (children) (cons pair children)) '()))
 
 
 ;; SPPF trees walk each rule down the left side, and each right child of the left spine corresponds to
@@ -261,26 +261,26 @@
     (test-case "datum parser"
       (define P-rule
         (make-cf-production-rule
-         #:symbol 'P #:label 'P #:substitution (list (nonterminal-symbol 'S))))
+         #:symbol 'P #:label (datum-label 'P) #:substitution (list (nonterminal-symbol 'S))))
       (define S-rule0
         (make-cf-production-rule
          #:symbol 'S
-         #:label 'S0
+         #:label (datum-label 'S0)
          #:substitution (list (nonterminal-symbol 'S) (terminal-symbol '+) (nonterminal-symbol 'M))))
       (define S-rule1
         (make-cf-production-rule
-         #:symbol 'S #:label 'S1 #:substitution (list (nonterminal-symbol 'M))))
+         #:symbol 'S #:label (datum-label 'S1) #:substitution (list (nonterminal-symbol 'M))))
       (define M-rule0
         (make-cf-production-rule
          #:symbol 'M
-         #:label 'M0
+         #:label (datum-label 'M0)
          #:substitution (list (nonterminal-symbol 'M) (terminal-symbol '*) (nonterminal-symbol 'T))))
       (define M-rule1
         (make-cf-production-rule
-         #:symbol 'M #:label 'M1 #:substitution (list (nonterminal-symbol 'T))))
+         #:symbol 'M #:label (datum-label 'M1) #:substitution (list (nonterminal-symbol 'T))))
       (define T-rule
         (make-cf-production-rule
-         #:symbol 'T #:label 'T #:substitution (list (terminal-symbol 'number))))
+         #:symbol 'T #:label (datum-label 'T) #:substitution (list (terminal-symbol 'number))))
       (define arithmetic-grammar
         (make-cf-grammar
          #:rules (list P-rule S-rule0 S-rule1 M-rule0 M-rule1 T-rule) #:start-symbol 'P))
@@ -290,16 +290,20 @@
       (define parser (earley-parser arithmetic-grammar))
       (define expected-arithmetic-parse-tree
         (parser-derivation
-         'P
+         (datum-label 'P)
          (parser-derivation
-          'S0
-          (parser-derivation 'S1 (parser-derivation 'M1 (parser-derivation 'T (parser-derivation 2))))
+          (datum-label 'S0)
+          (parser-derivation
+           (datum-label 'S1)
+           (parser-derivation
+            (datum-label 'M1) (parser-derivation (datum-label 'T) (parser-derivation 2))))
           (parser-derivation 'plus)
           (parser-derivation
-           'M0
-           (parser-derivation 'M1 (parser-derivation 'T (parser-derivation 3)))
+           (datum-label 'M0)
+           (parser-derivation
+            (datum-label 'M1) (parser-derivation (datum-label 'T) (parser-derivation 3)))
            (parser-derivation 'times)
-           (parser-derivation 'T (parser-derivation 4))))))
+           (parser-derivation (datum-label 'T) (parser-derivation 4))))))
     
       (check-equal? (parse-datum parser input-tokens) expected-arithmetic-parse-tree))
 
