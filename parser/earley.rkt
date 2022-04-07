@@ -250,26 +250,26 @@
     ;; Grammar and input taken from https://en.wikipedia.org/wiki/Earley_parser#Example
     (define P-rule
       (make-cf-production-rule
-       #:symbol 'P #:action (label-action 'P) #:substitution (list (nonterminal-symbol 'S))))
+       #:nonterminal 'P #:action (label-action 'P) #:substitution (list (nonterminal-symbol 'S))))
     (define S-rule0
       (make-cf-production-rule
-       #:symbol 'S
+       #:nonterminal 'S
        #:action (label-action 'S0)
        #:substitution (list (nonterminal-symbol 'S) (terminal-symbol '+) (nonterminal-symbol 'M))))
     (define S-rule1
       (make-cf-production-rule
-       #:symbol 'S #:action (label-action 'S1) #:substitution (list (nonterminal-symbol 'M))))
+       #:nonterminal 'S #:action (label-action 'S1) #:substitution (list (nonterminal-symbol 'M))))
     (define M-rule0
       (make-cf-production-rule
-       #:symbol 'M
+       #:nonterminal 'M
        #:action (label-action 'M0)
        #:substitution (list (nonterminal-symbol 'M) (terminal-symbol '*) (nonterminal-symbol 'T))))
     (define M-rule1
       (make-cf-production-rule
-       #:symbol 'M #:action (label-action 'M1) #:substitution (list (nonterminal-symbol 'T))))
+       #:nonterminal 'M #:action (label-action 'M1) #:substitution (list (nonterminal-symbol 'T))))
     (define T-rule
       (make-cf-production-rule
-       #:symbol 'T #:action (label-action 'T) #:substitution (list (terminal-symbol 'number))))
+       #:nonterminal 'T #:action (label-action 'T) #:substitution (list (terminal-symbol 'number))))
     (define arithmetic-grammar
       (make-cf-grammar
        #:rules (list P-rule S-rule0 S-rule1 M-rule0 M-rule1 T-rule) #:start-symbol 'P))

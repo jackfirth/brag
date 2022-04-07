@@ -14,7 +14,7 @@
   [cf-grammar-start-rules (-> cf-grammar? (set/c cf-production-rule? #:kind 'immutable))]
   [make-cf-grammar (-> #:rules (sequence/c cf-production-rule?) #:start-symbol any/c cf-grammar?)]
   [make-cf-production-rule
-   (-> #:symbol any/c #:substitution (sequence/c grammar-symbol?) #:action semantic-action?
+   (-> #:nonterminal any/c #:substitution (sequence/c grammar-symbol?) #:action semantic-action?
        cf-production-rule?)]))
 
 
@@ -64,5 +64,7 @@
   (cf-grammar (sequence->vector rules) start))
 
 
-(define (make-cf-production-rule #:symbol symbol #:substitution substitution #:action action)
-  (cf-production-rule symbol action (sequence->vector substitution)))
+(define (make-cf-production-rule #:nonterminal nonterminal
+                                 #:action action
+                                 #:substitution substitution)
+  (cf-production-rule nonterminal action (sequence->vector substitution)))
