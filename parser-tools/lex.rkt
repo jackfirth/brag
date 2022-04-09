@@ -3,192 +3,186 @@
 ;; Provides the syntax used to create lexers and the functions needed to
 ;; create and use the buffer that the lexer reads from.  See docs.
 
-(require (for-syntax racket/syntax
-                     syntax/stx
+(require (for-syntax racket/base
+                     racket/contract/base
                      syntax/define
-                     yaragg/parser-tools/private-lex/util
+                     racket/match
+                     racket/promise
+                     syntax/stx
+                     racket/syntax
                      yaragg/parser-tools/private-lex/actions
                      yaragg/parser-tools/private-lex/front
                      yaragg/parser-tools/private-lex/unicode-chars
-                     racket/base
-                     racket/promise))
-
-(require racket/stxparam
+                     yaragg/parser-tools/private-lex/util)
+         racket/contract/base
+         racket/stxparam
+         syntax/parse/define
          syntax/readerr
          yaragg/parser-tools/private-lex/token)
 
-(provide lexer lexer-src-pos lexer-srcloc define-lex-abbrev define-lex-abbrevs define-lex-trans
-           
-         ;; Dealing with tokens and related structures 
-         define-tokens define-empty-tokens token-name token-value token?
+
+(provide lexer
+         lexer-src-pos
+         lexer-srcloc
+         define-lex-abbrev
+         define-lex-abbrevs
+         define-lex-trans
+         define-tokens
+         define-empty-tokens
+         token-name
+         token-value
+         token?
          (struct-out position)
          (struct-out position-token)
          (struct-out srcloc-token)
-           
-         ;; File path for highlighting errors while lexing
          file-path
-         lexer-file-path ;; alternate name
-           
-         ;; Lex abbrevs for unicode char sets.
-         any-char any-string nothing alphabetic lower-case upper-case title-case
-         numeric symbolic punctuation graphic whitespace blank iso-control
+         lexer-file-path
+         any-char
+         any-string
+         nothing
+         alphabetic
+         lower-case
+         upper-case
+         title-case
+         numeric
+         symbolic
+         punctuation
+         graphic
+         whitespace
+         blank
+         iso-control
+         char-set
+         start-pos
+         end-pos
+         lexeme
+         lexeme-srcloc
+         input-port
+         return-without-pos
+         return-without-srcloc)
 
-         ;; A regular expression operator
-         char-set)
-  
 ;; wrap-action: syntax-object src-pos? -> syntax-object
 (define-for-syntax (wrap-action action src-loc-style)
-  (with-syntax ([action-stx 
-                 (cond
-                   [(eq? src-loc-style 'lexer-src-pos)
-                    #`(let/ec ret
-                        (syntax-parameterize 
-                            ([return-without-pos (make-rename-transformer #'ret)])
-                          (position-token #,action start-pos end-pos)))]
-                   [(eq? src-loc-style 'lexer-srcloc)
-                    #`(let/ec ret
-                        (syntax-parameterize 
-                            ([return-without-srcloc (make-rename-transformer #'ret)])
-                          (srcloc-token #,action lexeme-srcloc)))]
-                   [else action])])
-    (syntax/loc action
-      (λ (start-pos-p end-pos-p lexeme-p input-port-p)
-        (define lexeme-srcloc-p (make-srcloc (object-name input-port-p)
-                                             (position-line start-pos-p)
-                                             (position-col start-pos-p)
-                                             (position-offset start-pos-p)
-                                             (and (number? (position-offset end-pos-p))
-                                                  (number? (position-offset start-pos-p))
-                                                  (- (position-offset end-pos-p)
-                                                     (position-offset start-pos-p)))))
-        (syntax-parameterize 
-            ([start-pos (make-rename-transformer #'start-pos-p)]
-             [end-pos (make-rename-transformer #'end-pos-p)]
-             [lexeme (make-rename-transformer #'lexeme-p)]
-             [input-port (make-rename-transformer #'input-port-p)]
-             [lexeme-srcloc (make-rename-transformer #'lexeme-srcloc-p)])
-          action-stx)))))
+  (define/with-syntax action-stx
+    (cond
+      [(eq? src-loc-style 'lexer-src-pos)
+       #`(let/ec ret
+           (syntax-parameterize ([return-without-pos (make-rename-transformer #'ret)])
+             (position-token #,action start-pos end-pos)))]
+      [(eq? src-loc-style 'lexer-srcloc)
+       #`(let/ec ret
+           (syntax-parameterize ([return-without-srcloc (make-rename-transformer #'ret)])
+             (srcloc-token #,action lexeme-srcloc)))]
+      [else action]))
+  (syntax/loc action
+    (λ (start-pos-p end-pos-p lexeme-p input-port-p)
+      (define lexeme-srcloc-p (make-srcloc (object-name input-port-p)
+                                           (position-line start-pos-p)
+                                           (position-col start-pos-p)
+                                           (position-offset start-pos-p)
+                                           (and (number? (position-offset end-pos-p))
+                                                (number? (position-offset start-pos-p))
+                                                (- (position-offset end-pos-p)
+                                                   (position-offset start-pos-p)))))
+      (syntax-parameterize 
+          ([start-pos (make-rename-transformer #'start-pos-p)]
+           [end-pos (make-rename-transformer #'end-pos-p)]
+           [lexeme (make-rename-transformer #'lexeme-p)]
+           [input-port (make-rename-transformer #'input-port-p)]
+           [lexeme-srcloc (make-rename-transformer #'lexeme-srcloc-p)])
+        action-stx))))
 
 (define-for-syntax (make-lexer-macro caller src-loc-style)
   (λ (stx)
     (syntax-case stx ()
       [(_ . RE+ACTS)         
        (with-disappeared-uses
-           (let ()
-             (define spec/re-acts (syntax->list #'RE+ACTS))
-             (for/and ([x (in-list spec/re-acts)])
-               (syntax-case x ()
-                 [(RE ACT) #t]
-                 [else (raise-syntax-error caller "not a regular expression / action pair" stx x)]))
-             (define eof-act (get-special-action spec/re-acts #'eof (case src-loc-style
-                                                                      [(lexer-src-pos) #'(return-without-pos eof)]
-                                                                      [(lexer-srcloc) #'(return-without-srcloc eof)]
-                                                                      [else #'eof])))
-             (define spec-act (get-special-action spec/re-acts #'special #'(void)))
-             (define spec-comment-act (get-special-action spec/re-acts #'special-comment #'#f))
-             (define ids (list #'special #'special-comment #'eof))
-             (define re-acts (filter (λ (spec/re-act)
-                                       (syntax-case spec/re-act ()
-                                         [((special) act)
-                                          (not (ormap
-                                                (λ (x)
-                                                  (and (identifier? #'special)
-                                                       (module-or-top-identifier=? #'special x)))
-                                                ids))]
-                                         [_ #t])) spec/re-acts))
-             (define names (map (λ (x) (datum->syntax #f (gensym))) re-acts))
-             (define acts (map (λ (x) (stx-car (stx-cdr x))) re-acts))
-             (define re-actnames (map (λ (re-act name) (list (stx-car re-act) name)) re-acts names))
-             (when (null? spec/re-acts)
-               (raise-syntax-error caller "expected at least one action" stx))
-             (define-values (trans start action-names no-look) (build-lexer re-actnames))
-             (when (vector-ref action-names start) ;; Start state is final
-               (unless (and 
-                        ;; All the successor states are final
-                        (vector? (vector-ref trans start))
-                        (andmap (λ (x) (vector-ref action-names (vector-ref x 2)))
-                                (vector->list (vector-ref trans start)))
-                        ;; Each character has a successor state
-                        (let loop ([check 0]
-                                   [nexts (vector->list (vector-ref trans start))])
-                          (cond
-                            [(null? nexts) #f]
-                            [else
-                             (let ([next (car nexts)])
-                               (and (= (vector-ref next 0) check)
-                                    (let ([next-check (vector-ref next 1)])
-                                      (or (>= next-check max-char-num)
-                                          (loop (add1 next-check) (cdr nexts))))))])))
-                 (eprintf "warning: lexer at ~a can accept the empty string\n" stx)))
-             (with-syntax ([START-STATE-STX start]
-                           [TRANS-TABLE-STX trans]
-                           [NO-LOOKAHEAD-STX no-look]
-                           [(NAME ...) names]
-                           [(ACT ...) (map (λ (a) (wrap-action a src-loc-style)) acts)]
-                           [(ACT-NAME ...) (vector->list action-names)]
-                           [SPEC-ACT-STX (wrap-action spec-act src-loc-style)]
-                           [HAS-COMMENT-ACT?-STX (and (syntax-e spec-comment-act) #t)]
-                           [SPEC-COMMENT-ACT-STX (wrap-action spec-comment-act src-loc-style)]
-                           [EOF-ACT-STX (wrap-action eof-act src-loc-style)])
-               (syntax/loc stx (let ([NAME ACT] ...)
-                                 (let ([proc (lexer-body START-STATE-STX 
-                                                         TRANS-TABLE-STX
-                                                         (vector ACT-NAME ...)
-                                                         NO-LOOKAHEAD-STX
-                                                         SPEC-ACT-STX
-                                                         HAS-COMMENT-ACT?-STX
-                                                         SPEC-COMMENT-ACT-STX
-                                                         EOF-ACT-STX)])
-                                   ;; reverse eta to get named procedures:
-                                   (λ (port) (proc port))))))))])))
+           (define spec/re-acts (syntax->list #'RE+ACTS))
+         (for/and ([x (in-list spec/re-acts)])
+           (syntax-case x ()
+             [(RE ACT) #t]
+             [else (raise-syntax-error caller "not a regular expression / action pair" stx x)]))
+         (define eof-act
+           (get-special-action spec/re-acts
+                               #'eof
+                               (case src-loc-style
+                                 [(lexer-src-pos) #'(return-without-pos eof)]
+                                 [(lexer-srcloc) #'(return-without-srcloc eof)]
+                                 [else #'eof])))
+         (define spec-act (get-special-action spec/re-acts #'special #'(void)))
+         (define spec-comment-act (get-special-action spec/re-acts #'special-comment #'#f))
+         (define ids (list #'special #'special-comment #'eof))
+         (define re-acts
+           (filter (λ (spec/re-act)
+                     (syntax-case spec/re-act ()
+                       [((special) act)
+                        (not (for/or ([x (in-list ids)])
+                               (and (identifier? #'special)
+                                    (module-or-top-identifier=? #'special x))))]
+                       [_ #t]))
+                   spec/re-acts))
+         (define names (map (λ (x) (datum->syntax #f (gensym))) re-acts))
+         (define acts (map (λ (x) (stx-car (stx-cdr x))) re-acts))
+         (define re-actnames (map (λ (re-act name) (list (stx-car re-act) name)) re-acts names))
+         (when (null? spec/re-acts)
+           (raise-syntax-error caller "expected at least one action" stx))
+         (define-values (trans start action-names no-look) (build-lexer re-actnames))
+         (when (vector-ref action-names start) ;; Start state is final
+           (unless (and 
+                    ;; All the successor states are final
+                    (vector? (vector-ref trans start))
+                    (andmap (λ (x) (vector-ref action-names (vector-ref x 2)))
+                            (vector->list (vector-ref trans start)))
+                    ;; Each character has a successor state
+                    (let loop ([check 0]
+                               [nexts (vector->list (vector-ref trans start))])
+                      (cond
+                        [(null? nexts) #f]
+                        [else
+                         (let ([next (car nexts)])
+                           (and (= (vector-ref next 0) check)
+                                (let ([next-check (vector-ref next 1)])
+                                  (or (>= next-check max-char-num)
+                                      (loop (add1 next-check) (cdr nexts))))))])))
+             (eprintf "warning: lexer at ~a can accept the empty string\n" stx)))
+         (with-syntax ([START-STATE-STX start]
+                       [TRANS-TABLE-STX trans]
+                       [NO-LOOKAHEAD-STX no-look]
+                       [(NAME ...) names]
+                       [(ACT ...) (map (λ (a) (wrap-action a src-loc-style)) acts)]
+                       [(ACT-NAME ...) (vector->list action-names)]
+                       [SPEC-ACT-STX (wrap-action spec-act src-loc-style)]
+                       [HAS-COMMENT-ACT?-STX (and (syntax-e spec-comment-act) #t)]
+                       [SPEC-COMMENT-ACT-STX (wrap-action spec-comment-act src-loc-style)]
+                       [EOF-ACT-STX (wrap-action eof-act src-loc-style)])
+           (syntax/loc stx (let ([NAME ACT] ...)
+                             (let ([proc (lexer-body START-STATE-STX 
+                                                     TRANS-TABLE-STX
+                                                     (vector ACT-NAME ...)
+                                                     NO-LOOKAHEAD-STX
+                                                     SPEC-ACT-STX
+                                                     HAS-COMMENT-ACT?-STX
+                                                     SPEC-COMMENT-ACT-STX
+                                                     EOF-ACT-STX)])
+                               ;; reverse eta to get named procedures:
+                               (λ (port) (proc port)))))))])))
 
 (define-syntax lexer (make-lexer-macro 'lexer #f))
 (define-syntax lexer-src-pos (make-lexer-macro 'lexer-src-pos 'lexer-src-pos))
 (define-syntax lexer-srcloc (make-lexer-macro 'lexer-srcloc 'lexer-srcloc))
     
-(define-syntax (define-lex-abbrev stx)
-  (syntax-case stx ()
-    [(_ NAME RE) (identifier? #'NAME)
-                 (syntax/loc stx
-                   (define-syntax NAME
-                     (lex-abbrev (λ () (quote-syntax RE)))))]
-    [_ (raise-syntax-error 'define-lex-abbrev "form should be (define-lex-abbrev name re)" stx)]))
+(define-syntax-parse-rule (define-lex-abbrev NAME:id RE)
+  (define-syntax NAME
+    (lex-abbrev (λ () (quote-syntax RE)))))
 
-(define-syntax (define-lex-abbrevs stx)
-  (syntax-case stx ()
-    [(_ . XS)
-     (with-syntax ([(ABBREV ...) (map 
-                                  (λ (a)
-                                    (syntax-case a ()
-                                      [(NAME RE) (identifier? #'NAME)
-                                                 (syntax/loc a (define-lex-abbrev NAME RE))]
-                                      [_ (raise-syntax-error
-                                          #f
-                                          "form should be (define-lex-abbrevs (name re) ...)"
-                                          stx
-                                          a)]))
-                                  (syntax->list #'XS))])
-       (syntax/loc stx (begin ABBREV ...)))]
-    [_ (raise-syntax-error #f "form should be (define-lex-abbrevs (name re) ...)" stx)]))
+(define-syntax-parse-rule (define-lex-abbrevs (id:id re) ...)
+  (begin (define-lex-abbrev id re) ...))
 
 (define-syntax (define-lex-trans stx)
-  (syntax-case stx ()
-    [(_ name-form body-form)
-     (let-values (((name body)
-                   (normalize-definition #'(define-syntax name-form body-form) #'λ)))
-         
-       #`(define-syntax #,name 
-           (let ((func #,body))
-             (unless (procedure? func)
-               (raise-syntax-error 'define-lex-trans "expected a procedure as the transformer, got ~e" func))
-             (unless (procedure-arity-includes? func 1)
-               (raise-syntax-error 'define-lex-trans "expected a procedure that accepts 1 argument as the transformer, got ~e" func))
-             (lex-trans func))))]
-    [_
-     (raise-syntax-error
-      #f
-      "form should be (define-lex-trans name transformer)"
-      stx)]))
+  (syntax-parse stx
+    [(_ id:id trans-expr)
+     #'(define-syntax id (lex-trans trans-expr))]
+    [(_ (id:id stx-id:id) body-expr:expr)
+     #'(define-syntax id (lex-trans (λ (stx-id) body-expr)))]))
        
 
 (define (get-next-state-helper char min max table)
@@ -203,10 +197,10 @@
        [(<= r1 char r2) (vector-ref el 2)]
        [(< char r1) (get-next-state-helper char min try table)]
        [else (get-next-state-helper char (add1 try) max table)])]))
-               
-          
-          
-  
+
+
+
+
 (define (get-next-state char table)
   (and table (get-next-state-helper char 0 (vector-length table) table)))
   
@@ -215,7 +209,6 @@
   (define (lexer ip)
     (define first-pos (get-position ip))
     (define first-char (peek-char-or-special ip 0))
-    ;(printf "(peek-char-or-special port 0) = ~e\n" first-char)
     (cond
       [(eof-object? first-char)
        (do-match ip first-pos eof-action (read-char-or-special ip))]
@@ -264,8 +257,6 @@
             (define act (vector-ref actions next-state))
             (define next-length-bytes (+ (char-utf-8-length char) length-bytes))
             (define next-char (peek-char-or-special ip next-length-bytes))
-            #;(printf "(peek-char-or-special port ~e) = ~e\n"
-                      next-length-bytes next-char)
             (lexer-loop next-state 
                         next-char
                         (if act
@@ -299,68 +290,62 @@
 (define lexer-file-path file-path)
 
 (define (do-match ip first-pos action value)
-  #;(printf "(action ~a ~a ~a ~a)\n" 
-            (position-offset first-pos) (position-offset (get-position ip)) value ip)
   (action first-pos (get-position ip) value ip))
   
 (define (get-position ip)
   (define-values (line col off) (port-next-location ip))
   (position off line col))
 
-(define-syntax (create-unicode-abbrevs stx)
-  (syntax-case stx ()
-    [(_ CTXT)
-     (with-syntax ([(RANGES ...) (for/list ([range (in-list (list (force alphabetic-ranges)
-                                                                  (force lower-case-ranges)
-                                                                  (force upper-case-ranges)
-                                                                  (force title-case-ranges)
-                                                                  (force numeric-ranges)
-                                                                  (force symbolic-ranges)
-                                                                  (force punctuation-ranges)
-                                                                  (force graphic-ranges)
-                                                                  (force whitespace-ranges)
-                                                                  (force blank-ranges)
-                                                                  (force iso-control-ranges)))])
-                                           `(union ,@(map (λ (x)
-                                                            `(char-range ,(integer->char (car x))
-                                                                         ,(integer->char (cdr x))))
-                                                          range)))]
-                   [(NAMES ...) (for/list ([sym (in-list '(alphabetic
-                                                           lower-case
-                                                           upper-case
-                                                           title-case
-                                                           numeric
-                                                           symbolic
-                                                           punctuation
-                                                           graphic
-                                                           whitespace
-                                                           blank
-                                                           iso-control))])
-                                          (datum->syntax #'CTXT sym #f))])
-       #'(define-lex-abbrevs (NAMES RANGES) ...))]))
-                                             
+
 (define-lex-abbrev any-char (char-complement (union)))
 (define-lex-abbrev any-string (intersection))
 (define-lex-abbrev nothing (union))
-(create-unicode-abbrevs #'here)
-  
-(define-lex-trans (char-set stx)
-  (syntax-case stx ()
-    [(_ STR)
-     (string? (syntax-e #'STR))
-     (with-syntax ([(CHAR ...) (string->list (syntax-e #'STR))])
-       #'(union CHAR ...))]))
 
-(define-syntax-rule (provide-lex-keyword ID ...)
-  (begin
-    (define-syntax-parameter ID
-      (make-set!-transformer
-       (λ (stx)
-         (raise-syntax-error
-          'provide-lex-keyword
-          (format "use of a lexer keyword (~a) is not in an appropriate lexer action" 'ID)
-          stx))))
-    ...
-    (provide ID ...)))
+
+(define-for-syntax (unicode-lex-abbrev range)
+  (define/with-syntax ((lower upper) ...)
+    (for/list ([range-component (in-list (force range))])
+      (match-define (cons lower-int upper-int) range-component)
+      (list (integer->char lower-int) (integer->char upper-int))))
+  (lex-abbrev (λ () #'(union (char-range lower upper) ...))))
+
+
+(define-syntax-parse-rule (define-unicode-abbrev name:id range:expr)
+  (define-syntax name (unicode-lex-abbrev range)))
+
+                                             
+(define-unicode-abbrev alphabetic alphabetic-ranges)
+(define-unicode-abbrev lower-case lower-case-ranges)
+(define-unicode-abbrev upper-case upper-case-ranges)
+(define-unicode-abbrev title-case title-case-ranges)
+(define-unicode-abbrev numeric numeric-ranges)
+(define-unicode-abbrev symbolic symbolic-ranges)
+(define-unicode-abbrev punctuation punctuation-ranges)
+(define-unicode-abbrev graphic graphic-ranges)
+(define-unicode-abbrev whitespace whitespace-ranges)
+(define-unicode-abbrev blank blank-ranges)
+(define-unicode-abbrev iso-control iso-control-ranges)
+
+
+(define-lex-trans (char-set stx)
+  (syntax-parse stx
+    [(_ STR:string)
+     #:with (CHAR ...) (string->list (syntax-e #'STR))
+     #'(union CHAR ...)]))
+
+
+(define-for-syntax (make-lex-keyword-transformer id)
+  (make-set!-transformer
+   (λ (stx)
+     (raise-syntax-error id "use of lexer keyword is not in an appropriate lexer action" stx))))
+
+(define-syntax-rule (define-lex-keyword ID)
+  (define-syntax-parameter ID (make-lex-keyword-transformer 'ID)))
   
-(provide-lex-keyword start-pos end-pos lexeme lexeme-srcloc input-port return-without-pos return-without-srcloc)
+(define-lex-keyword start-pos)
+(define-lex-keyword end-pos)
+(define-lex-keyword lexeme)
+(define-lex-keyword lexeme-srcloc)
+(define-lex-keyword input-port)
+(define-lex-keyword return-without-pos)
+(define-lex-keyword return-without-srcloc)
