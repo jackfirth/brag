@@ -594,10 +594,9 @@
                                                                        elem
                                                                        (λ () #f)))
                                                                     pat)])
-                                                        (andmap (λ (i)
-                                                                  (or (not i)
-                                                                      (andmap values (caddr i))))
-                                                                l))))
+                                                        (for/and ([i (in-list l)]
+                                                                  #:when i)
+                                                          (andmap values (caddr i))))))
                                                 pats (caddr old-list))))
                                    nt-ids patss)
                                   ;; Build a definition for each non-term:
