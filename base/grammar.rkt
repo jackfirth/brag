@@ -5,12 +5,9 @@
 
 
 (provide
- (struct-out terminal-symbol)
- (struct-out nonterminal-symbol)
  (struct-out cf-grammar)
  (struct-out cf-production-rule)
  (contract-out
-  [grammar-symbol? predicate/c]
   [cf-grammar-start-rules (-> cf-grammar? (set/c cf-production-rule? #:kind 'immutable))]
   [make-cf-grammar (-> #:rules (sequence/c cf-production-rule?) #:start-symbol any/c cf-grammar?)]
   [make-cf-production-rule
@@ -22,7 +19,8 @@
          racket/set
          rebellion/collection/vector
          yaragg/base/derivation
-         yaragg/base/semantic-action)
+         yaragg/base/semantic-action
+         yaragg/base/symbol)
 
 
 ;@----------------------------------------------------------------------------------------------------
@@ -50,15 +48,6 @@
 ;; type (Semnatic-Action A), and a substitution sequence of (Grammar-Symbol T S) values, stored in an
 ;; immutable vector.
 (struct cf-production-rule (nonterminal action substitution) #:transparent)
-
-
-;; A (Grammar-Symbol T S) is either a (Terminal-Symbol T) or a (Nonterminal-Symbol S)
-(define (grammar-symbol? v)
-  (or (terminal-symbol? v) (nonterminal-symbol? v)))
-
-
-(struct terminal-symbol (value) #:transparent)
-(struct nonterminal-symbol (value) #:transparent)
 
 
 (define (make-cf-grammar #:rules rules #:start-symbol start)

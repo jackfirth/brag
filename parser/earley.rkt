@@ -18,6 +18,8 @@
          rebellion/private/guarded-block
          yaragg/base/derivation
          yaragg/base/grammar
+         yaragg/base/semantic-action
+         yaragg/base/symbol
          yaragg/base/token
          yaragg/parser
          (submod yaragg/parser private))
