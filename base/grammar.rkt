@@ -21,7 +21,8 @@
 (require racket/sequence
          racket/set
          rebellion/collection/vector
-         yaragg/base/derivation)
+         yaragg/base/derivation
+         yaragg/base/semantic-action)
 
 
 ;@----------------------------------------------------------------------------------------------------
