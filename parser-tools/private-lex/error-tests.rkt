@@ -28,14 +28,6 @@
   (check-exn #rx"regular-expression"
              (λ () (convert-compile-time-error (let-syntax ((a 1)) (lexer ((a) 1))))))
 
-  (check-exn #rx"define-lex-trans"
-             (λ ()
-               (convert-compile-time-error 
-                (let ()
-                  (define-lex-trans a 1)
-                  (let ()
-                    (lexer ((a) 1)))))))
-
   ;; Detecting mutual recursion cycle:
   (check-exn #rx"regular-expression"
              (λ ()
