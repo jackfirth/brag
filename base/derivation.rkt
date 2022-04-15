@@ -139,73 +139,37 @@
 
 
 (define (parser-derivation->syntax derivation)
+  (define first-token (parser-derivation-first-terminal derivation))
+  (define last-token (parser-derivation-last-terminal derivation))
+
   (define (->splice derivation)
     (match derivation
       [(terminal-derivation t) (list (syntax-token->syntax t))]
-      [(nonterminal-derivation (? cut-action?) _) '()]
-      [(nonterminal-derivation (? splice-action?) children)
-       (for*/list ([child (in-vector children)]
-                   [stx (in-list (->splice child))])
-         stx)]
-      [(nonterminal-derivation (? label-action? label) children)
-       (define first-token (parser-derivation-first-terminal derivation))
-       (define label-location
-         (srcloc (syntax-token-source first-token)
-                 (syntax-token-line first-token)
-                 (syntax-token-column first-token)
-                 (syntax-token-position first-token)
-                 0))
-       (define label-stx
-         (for/fold ([stx (datum->syntax #false (label-action-value label) label-location #false)])
-                   ([(key value) (in-hash (label-action-properties label))])
-           (syntax-property stx key value)))
+      [(nonterminal-derivation action children)
        (define children-syntaxes
          (for*/list ([child (in-vector children)]
                      [spliced-child (in-list (->splice child))])
            spliced-child))
-       (define last-token (parser-derivation-last-terminal derivation))
-       (define expression-location
-         (srcloc (syntax-token-source first-token)
-                 (syntax-token-line first-token)
-                 (syntax-token-column first-token)
-                 (syntax-token-position first-token)
-                 (- (syntax-token-end-position last-token) (syntax-token-position first-token))))
-       (define expression-stx
-         (datum->syntax #false (cons label-stx children-syntaxes) expression-location #false))
-       (list (for/fold ([expression-stx expression-stx])
-                       ([(key value) (in-hash (label-action-expression-properties label))])
-               (syntax-property expression-stx key value)))]))
-  (define first-token (parser-derivation-first-terminal derivation))
-  (define last-token (parser-derivation-last-terminal derivation))
-  (define top-level-location
-    (srcloc (syntax-token-source first-token)
-            (syntax-token-line first-token)
-            (syntax-token-column first-token)
-            (syntax-token-position first-token)
-            (- (syntax-token-end-position last-token) (syntax-token-position first-token))))
-  (define top-level-stxs (->splice derivation))
-  (match top-level-stxs
+       (semantic-action-build-syntax-splice
+        action children-syntaxes #:first-token first-token #:last-token last-token)]))
+  
+  (match (->splice derivation)
     [(list stx) stx]))
 
 
 (define (parser-derivation->datum derivation)
+
   (define (->splice derivation)
     (match derivation
       [(terminal-derivation t) (list t)]
-      [(nonterminal-derivation (? cut-action?) _) '()]
-      [(nonterminal-derivation (? splice-action?) children)
-       (for*/list ([child (in-vector children)]
-                   [datum (in-list (->splice child))])
-         datum)]
-      [(nonterminal-derivation (? label-action? label) children)
-       (define value (label-action-value label))
+      [(nonterminal-derivation action children)
        (define child-data
          (for*/list ([child (in-vector children)]
-                     [spliced-child (in-list (->splice child))])
-           spliced-child))
-       (list (cons value child-data))]))
-  (define top-level-data (->splice derivation))
-  (match top-level-data
+                     [datum (in-list (->splice child))])
+           datum))
+       (semantic-action-build-datum-splice action child-data)]))
+  
+  (match (->splice derivation)
     [(list datum) datum]))
 
 
@@ -216,7 +180,7 @@
       (define derivation (parser-derivation 'a))
       (check-equal? (parser-derivation->datum derivation) 'a))
 
-    (test-case "datum nonterminals"
+    (test-case "datum labels"
       (define derivation
         (parser-derivation (label-action 'a)
                            (parser-derivation 'b)
@@ -241,7 +205,66 @@
                                               (parser-derivation 'c2)
                                               (parser-derivation 'c3))
                            (parser-derivation 'd)))
-      (check-equal? (parser-derivation->datum derivation) '(a b c1 c2 c3 d))))
+      (check-equal? (parser-derivation->datum derivation) '(a b c1 c2 c3 d)))
+
+    (test-case "datum pairs"
+      (define derivation
+        (parser-derivation (build-pair-action) (parser-derivation 'b) (parser-derivation 'c)))
+      (check-equal? (parser-derivation->datum derivation) '(b . c)))
+
+    (test-case "datum lists"
+      (define derivation
+        (parser-derivation (build-list-action)
+                           (parser-derivation 'b)
+                           (parser-derivation 'c)
+                           (parser-derivation 'd)))
+      (check-equal? (parser-derivation->datum derivation) '(b c d)))
+
+    (test-case "improper datum lists"
+      (define derivation
+        (parser-derivation (build-improper-list-action)
+                           (parser-derivation 'b)
+                           (parser-derivation 'c)
+                           (parser-derivation 'd)))
+      (check-equal? (parser-derivation->datum derivation) '(b c . d)))
+
+    (test-case "datum vectors"
+      (define derivation
+        (parser-derivation (build-vector-action)
+                           (parser-derivation 'b)
+                           (parser-derivation 'c)
+                           (parser-derivation 'd)))
+      (check-equal? (parser-derivation->datum derivation) #(b c d)))
+
+    (test-case "datum hashes"
+      (define derivation
+        (parser-derivation (build-hash-action)
+                           (parser-derivation 'a)
+                           (parser-derivation 1)
+                           (parser-derivation 'b)
+                           (parser-derivation 2)))
+      (check-equal? (parser-derivation->datum derivation) (hash 'a 1 'b 2)))
+
+    (test-case "datum hashes with duplicate keys"
+      (define derivation
+        (parser-derivation (build-hash-action)
+                           (parser-derivation 'a)
+                           (parser-derivation 1)
+                           (parser-derivation 'a)
+                           (parser-derivation 2)))
+      (check-exn exn:fail:contract? (λ () (parser-derivation->datum derivation))))
+
+    (test-case "datum boxes"
+      (define derivation
+        (parser-derivation (build-box-action) (parser-derivation 'a)))
+      (check-equal? (parser-derivation->datum derivation) (box-immutable 'a)))
+
+    (test-case "prefab datum structs"
+      (define derivation
+        (parser-derivation (build-prefab-struct-action 'point)
+                           (parser-derivation 1)
+                           (parser-derivation 2)))
+      (check-equal? (parser-derivation->datum derivation) #s(point 1 2))))
 
   (test-case (name-string parser-derivation->syntax)
 
@@ -251,7 +274,7 @@
       (check-equal? (syntax->datum actual) 'a)
       (check-equal? (syntax-srcloc actual) (srcloc #false #false #false 1 1)))
 
-    (test-case "syntax nonterminals"
+    (test-case "syntax labels"
       (define derivation
         (parser-derivation
          (label-action 'a)
@@ -285,4 +308,87 @@
          (parser-derivation (syntax-token 'd #:position 5 #:span 1))))
       (define actual (parser-derivation->syntax derivation))
       (check-equal? (syntax->datum actual) '(a b c1 c2 c3 d))
-      (check-equal? (syntax-srcloc actual) (srcloc #false #false #false 1 5)))))
+      (check-equal? (syntax-srcloc actual) (srcloc #false #false #false 1 5)))
+
+    (test-case "syntax pairs"
+      (define derivation
+        (parser-derivation
+         (build-pair-action)
+         (parser-derivation (syntax-token 'b #:position 1 #:span 1))
+         (parser-derivation (syntax-token 'c #:position 2 #:span 1))))
+      (define actual (parser-derivation->syntax derivation))
+      (check-equal? (syntax->datum actual) '(b . c))
+      (check-equal? (syntax-srcloc actual) (srcloc #false #false #false 1 2)))
+
+    (test-case "syntax lists"
+      (define derivation
+        (parser-derivation
+         (build-list-action)
+         (parser-derivation (syntax-token 'b #:position 1 #:span 1))
+         (parser-derivation (syntax-token 'c #:position 2 #:span 1))
+         (parser-derivation (syntax-token 'd #:position 3 #:span 1))))
+      (define actual (parser-derivation->syntax derivation))
+      (check-equal? (syntax->datum actual) '(b c d))
+      (check-equal? (syntax-srcloc actual) (srcloc #false #false #false 1 3)))
+
+    (test-case "improper syntax lists"
+      (define derivation
+        (parser-derivation
+         (build-improper-list-action)
+         (parser-derivation (syntax-token 'b #:position 1 #:span 1))
+         (parser-derivation (syntax-token 'c #:position 2 #:span 1))
+         (parser-derivation (syntax-token 'd #:position 3 #:span 1))))
+      (define actual (parser-derivation->syntax derivation))
+      (check-equal? (syntax->datum actual) '(b c . d))
+      (check-equal? (syntax-srcloc actual) (srcloc #false #false #false 1 3)))
+
+    (test-case "syntax vectors"
+      (define derivation
+        (parser-derivation
+         (build-vector-action)
+         (parser-derivation (syntax-token 'b #:position 1 #:span 1))
+         (parser-derivation (syntax-token 'c #:position 2 #:span 1))
+         (parser-derivation (syntax-token 'd #:position 3 #:span 1))))
+      (define actual (parser-derivation->syntax derivation))
+      (check-equal? (syntax->datum actual) #(b c d))
+      (check-equal? (syntax-srcloc actual) (srcloc #false #false #false 1 3)))
+
+    (test-case "syntax hash tables"
+      (define derivation
+        (parser-derivation
+         (build-hash-action)
+         (parser-derivation (syntax-token 'a #:position 1 #:span 1))
+         (parser-derivation (syntax-token 1 #:position 2 #:span 1))
+         (parser-derivation (syntax-token 'b #:position 3 #:span 1))
+         (parser-derivation (syntax-token 2 #:position 4 #:span 1))))
+      (define actual (parser-derivation->syntax derivation))
+      (check-equal? (syntax->datum actual) (hash 'a 1 'b 2))
+      (check-equal? (syntax-srcloc actual) (srcloc #false #false #false 1 4)))
+
+    (test-case "syntax hash tables with duplicate keys"
+      (define derivation
+        (parser-derivation
+         (build-hash-action)
+         (parser-derivation (syntax-token 'a #:position 1 #:span 1))
+         (parser-derivation (syntax-token 1 #:position 2 #:span 1))
+         (parser-derivation (syntax-token 'a #:position 3 #:span 1))
+         (parser-derivation (syntax-token 2 #:position 4 #:span 1))))
+      (check-exn exn:fail:contract? (λ () (parser-derivation->syntax derivation))))
+
+    (test-case "syntax boxes"
+      (define derivation
+        (parser-derivation
+         (build-box-action) (parser-derivation (syntax-token 'a #:position 1 #:span 1))))
+      (define actual (parser-derivation->syntax derivation))
+      (check-equal? (syntax->datum actual) (box-immutable 'a))
+      (check-equal? (syntax-srcloc actual) (srcloc #false #false #false 1 1)))
+
+    (test-case "prefab syntax structs"
+      (define derivation
+        (parser-derivation
+         (build-prefab-struct-action 'point)
+         (parser-derivation (syntax-token 5 #:position 1 #:span 1))
+         (parser-derivation (syntax-token 10 #:position 2 #:span 1))))
+      (define actual (parser-derivation->syntax derivation))
+      (check-equal? (syntax->datum actual) #s(point 5 10))
+      (check-equal? (syntax-srcloc actual) (srcloc #false #false #false 1 2)))))
