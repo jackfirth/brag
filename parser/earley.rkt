@@ -6,7 +6,7 @@
 
 (provide
  (contract-out
-  [earley-parser (-> cf-grammar? parser?)]))
+  [earley-parser (-> grammar? parser?)]))
 
 
 (require racket/contract
@@ -18,6 +18,7 @@
          rebellion/private/guarded-block
          yaragg/base/derivation
          yaragg/base/grammar
+         (submod yaragg/base/grammar private)
          yaragg/base/semantic-action
          yaragg/base/symbol
          yaragg/base/token
@@ -34,7 +35,8 @@
 
 
 (define (earley-parser grammar)
-  (make-parser #:deriver (λ (tokens) (earley-parse grammar tokens))))
+  (define flat (grammar-flatten grammar))
+  (make-parser #:deriver (λ (tokens) (earley-parse flat tokens))))
 
 
 ;; The hash keys are sppf-keys and the values are a list of sppf-child-pairs
@@ -103,7 +105,7 @@
      (guard (complete-sppf-key? key) then
        (define tok (vector-ref tokens (complete-sppf-key-input-start key)))
        (stream (terminal-derivation (token-value tok))))
-     (define action (cf-production-rule-action (incomplete-sppf-key-rule key)))
+     (define action (flat-production-rule-action (incomplete-sppf-key-rule key)))
      (define possible-children (possible-children-lists forest key))
      (for*/stream ([children (in-stream possible-children)]
                    [processed-children (in-stream (cartesian-stream (map loop children)))])
@@ -119,9 +121,9 @@
       (λ (_) 'earley-state)
       (λ (this)
         (define rule (earley-state-rule this))
-        (define substitution (cf-production-rule-substitution rule))
+        (define substitution (flat-production-rule-substitution rule))
         (define pos (earley-state-substitution-position this))
-        (append (list (cf-production-rule-nonterminal rule) '->)
+        (append (list (nonterminal-symbol-value (flat-production-rule-nonterminal rule)) '->)
                 (for/list ([sym (in-vector substitution 0 pos)])
                   (if (terminal-symbol? sym)
                       (terminal-symbol-value sym)
@@ -135,14 +137,14 @@
 
 
 (define (initial-earley-states grammar)
-  (for/set ([rule (cf-grammar-start-rules grammar)])
+  (for/set ([rule (flat-grammar-start-rules grammar)])
     (earley-state rule 0 0 #false)))
 
 
 (define (earley-state-represents-successful-parse? state grammar)
   (and (zero? (earley-state-input-position state))
-       (equal? (cf-production-rule-nonterminal (earley-state-rule state))
-               (cf-grammar-start-symbol grammar))))
+       (equal? (flat-production-rule-nonterminal (earley-state-rule state))
+               (flat-grammar-start-symbol grammar))))
 
 
 (define (earley-parse grammar token-sequence)
@@ -165,7 +167,7 @@
          (guard (completed-state? next) then
            ;; find all states in S(j) of the form (X → α • Y β, j) and add (X → α Y • β, j)
            (define j (earley-state-input-position next))
-           (define completed (cf-production-rule-nonterminal (earley-state-rule next)))
+           (define completed (flat-production-rule-nonterminal (earley-state-rule next)))
            (define parent-states
              (if (equal? j k)
                  (set-union unprocessed processed)
@@ -174,7 +176,7 @@
          (define symbol (earley-state-next-symbol next))
          (guard (nonterminal-symbol? symbol) else
            (set))
-         (predictor-states grammar (nonterminal-symbol-value symbol) k)))
+         (predictor-states grammar symbol k)))
       
       (define new-unprocessed (set-subtract (set-remove added-states next) processed))
       (process-states (set-union (set-rest unprocessed) new-unprocessed) (set-add processed next)))
@@ -195,13 +197,13 @@
 (define (completed-state? state)
   (match-define (earley-state rule substitution-position _ _) state)
   (equal? substitution-position
-          (vector-length (cf-production-rule-substitution rule))))
+          (vector-length (flat-production-rule-substitution rule))))
 
 
 (define/contract (earley-state-next-symbol state)
   (-> (and/c earley-state? (not/c completed-state?)) grammar-symbol?)
   (match-define (earley-state rule substitution-position _ _) state)
-  (vector-ref (cf-production-rule-substitution rule) substitution-position))
+  (vector-ref (flat-production-rule-substitution rule) substitution-position))
 
 
 (define (earley-state-advance-substitution state #:key key)
@@ -210,9 +212,8 @@
 
 
 (define (completer-states completed-nonterminal states completed-key #:forest forest)
-  (define expected (nonterminal-symbol completed-nonterminal))
   (for/set ([s (in-set states)]
-            #:when (equal? (earley-state-next-symbol s) expected))
+            #:when (equal? (earley-state-next-symbol s) completed-nonterminal))
     (define rule (earley-state-rule s))
     (define start (earley-state-input-position s))
     (define end (sppf-key-input-end completed-key))
@@ -225,8 +226,8 @@
 
 (define (predictor-states grammar nonterminal k)
   ;; add (Y → • γ, k) for every production in the grammar with Y on the left-hand side
-  (for/set ([rule (in-vector (cf-grammar-rules grammar))]
-            #:when (equal? (cf-production-rule-nonterminal rule) nonterminal))
+  (for/set ([rule (in-vector (flat-grammar-rules grammar))]
+            #:when (equal? (flat-production-rule-nonterminal rule) nonterminal))
     (earley-state rule 0 k #false)))
 
 
@@ -250,31 +251,25 @@
   (test-case "earley-parser integration test"
 
     ;; Grammar and input taken from https://en.wikipedia.org/wiki/Earley_parser#Example
-    (define P-rule
-      (make-cf-production-rule
-       #:nonterminal 'P #:action (label-action 'P) #:substitution (list (nonterminal-symbol 'S))))
+    (define P (nonterminal-symbol 'P))
+    (define S (nonterminal-symbol 'S))
+    (define M (nonterminal-symbol 'M))
+    (define T (nonterminal-symbol 'T))
+    (define + (terminal-symbol '+))
+    (define * (terminal-symbol '*))
+    (define number (terminal-symbol 'number))
+    (define P-rule (production-rule #:nonterminal P #:action (label-action 'P) #:substitution S))
     (define S-rule0
-      (make-cf-production-rule
-       #:nonterminal 'S
-       #:action (label-action 'S0)
-       #:substitution (list (nonterminal-symbol 'S) (terminal-symbol '+) (nonterminal-symbol 'M))))
-    (define S-rule1
-      (make-cf-production-rule
-       #:nonterminal 'S #:action (label-action 'S1) #:substitution (list (nonterminal-symbol 'M))))
+      (production-rule
+       #:nonterminal S #:action (label-action 'S0) #:substitution (group-expression (list S + M))))
+    (define S-rule1 (production-rule #:nonterminal S #:action (label-action 'S1) #:substitution M))
     (define M-rule0
-      (make-cf-production-rule
-       #:nonterminal 'M
-       #:action (label-action 'M0)
-       #:substitution (list (nonterminal-symbol 'M) (terminal-symbol '*) (nonterminal-symbol 'T))))
-    (define M-rule1
-      (make-cf-production-rule
-       #:nonterminal 'M #:action (label-action 'M1) #:substitution (list (nonterminal-symbol 'T))))
-    (define T-rule
-      (make-cf-production-rule
-       #:nonterminal 'T #:action (label-action 'T) #:substitution (list (terminal-symbol 'number))))
+      (production-rule
+       #:nonterminal M #:action (label-action 'M0) #:substitution (group-expression (list M * T))))
+    (define M-rule1 (production-rule #:nonterminal M #:action (label-action 'M1) #:substitution T))
+    (define T-rule (production-rule #:nonterminal T #:action (label-action 'T) #:substitution number))
     (define arithmetic-grammar
-      (make-cf-grammar
-       #:rules (list P-rule S-rule0 S-rule1 M-rule0 M-rule1 T-rule) #:start-symbol 'P))
+      (grammar #:rules (list P-rule S-rule0 S-rule1 M-rule0 M-rule1 T-rule) #:start-symbol P))
     (define parser (earley-parser arithmetic-grammar))
 
     (test-case "datum parser"
