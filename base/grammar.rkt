@@ -24,7 +24,9 @@
    (->* ((or/c production-expression? grammar-symbol?))
         (#:min-count exact-nonnegative-integer? #:max-count (or/c exact-nonnegative-integer? +inf.0))
         repetition-expression?)]
-  [repetition-expression? predicate/c]))
+  [repetition-expression? predicate/c]
+  [cut-expression (-> (or/c production-expression? grammar-symbol?) cut-expression?)]
+  [cut-expression? predicate/c]))
 
 
 (module+ private
@@ -137,6 +139,11 @@
   #:guard (λ (subexpressions _) (sequence->vector subexpressions)))
 
 
+(struct choice-expression production-expression (choices)
+  #:guard (λ (choices _) (sequence->vector choices))
+  #:transparent)
+
+
 (struct repetition-expression production-expression (subexpression min-count max-count)
   #:transparent
   #:omit-define-syntaxes
@@ -147,9 +154,7 @@
   (constructor:repetition-expression subexpression min-count max-count))
 
 
-(struct choice-expression production-expression (choices)
-  #:guard (λ (choices _) (sequence->vector choices))
-  #:transparent)
+(struct cut-expression production-expression (subexpression) #:transparent)
 
 
 (struct virtual-symbol (base-symbol counter) #:transparent)
@@ -222,6 +227,16 @@
           #:substitution
           (sequence-append repetition-symbols (list subrule-symbol))))
        (vector-builder-add new-rules repetition-rule empty-rule)
+       subrule-symbol]
+
+      [(cut-expression subexpression)
+       (define subrule-symbol (fresh-symbol!))
+       (define subexpr-symbols (process-top-level-expression subexpression))
+
+       (define choice-rule
+         (flat-production-rule
+          #:nonterminal subrule-symbol #:action cut-action #:substitution subexpr-symbols))
+       (vector-builder-add new-rules choice-rule)
        subrule-symbol]))
 
   (define processed
@@ -276,7 +291,9 @@
           (for/fold ([expr (choice-expression (list (group-expression '()) subexpr))])
                     ([_ (in-range (- max min 1))])
             (choice-expression (list (group-expression '()) (group-expression (list subexpr expr))))))
-        (group-expression (sequence-append (make-list min subexpr) (list tail-expr)))])]))
+        (group-expression (sequence-append (make-list min subexpr) (list tail-expr)))])]
+
+    [(cut-expression subexpr) (cut-expression (production-expression-simplify subexpr))]))
 
 
 (define (vector-reverse vec)
@@ -458,4 +475,23 @@
          (flat-production-rule #:nonterminal x.1 #:action splice-action #:substitution (list b x.2))
          (flat-production-rule #:nonterminal x.2 #:action splice-action #:substitution '())
          (flat-production-rule #:nonterminal x.2 #:action splice-action #:substitution (list b))))
+      (check-equal? (production-rule-flatten rule) expected-rules))
+
+    ;; x: a \(b c) d
+    ;;
+    ;; ->
+    ;;
+    ;; x: a x.0 c
+    ;; x.0: b c (* cut *)
+    (test-case "cuts"
+      (define rule
+        (production-rule
+         #:nonterminal x
+         #:action (label-action 'x)
+         #:substitution (group-expression (list a (cut-expression (group-expression (list b c))) d))))
+      (define expected-rules
+        (vector
+         (flat-production-rule
+          #:nonterminal x #:action (label-action 'x) #:substitution (list a x.0 d))
+         (flat-production-rule #:nonterminal x.0 #:action cut-action #:substitution (list b c))))
       (check-equal? (production-rule-flatten rule) expected-rules))))
