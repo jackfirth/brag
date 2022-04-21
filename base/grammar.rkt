@@ -49,7 +49,8 @@
      (-> flat-production-rule? (vectorof grammar-symbol? #:immutable #true))])))
 
 
-(require racket/match
+(require racket/list
+         racket/match
          racket/sequence
          racket/set
          rebellion/collection/vector
@@ -220,10 +221,12 @@
           #:action splice-action
           #:substitution
           (sequence-append repetition-symbols (list subrule-symbol))))
-       (vector-builder-add new-rules empty-rule repetition-rule)
+       (vector-builder-add new-rules repetition-rule empty-rule)
        subrule-symbol]))
 
-  (define processed (process-top-level-expression (production-rule-substitution rule)))
+  (define processed
+    (process-top-level-expression
+     (production-expression-simplify (production-rule-substitution rule))))
 
   (define top-level-rule
     (flat-production-rule
@@ -232,6 +235,48 @@
      #:substitution processed))
   (vector-builder-add new-rules top-level-rule)
   (vector-reverse (build-vector new-rules)))
+
+
+(define (production-expression-simplify expression)
+  (match expression
+    [(? terminal-symbol?) expression]
+    [(? nonterminal-symbol?) expression]
+
+    [(group-expression subexpressions)
+       (group-expression
+        (for/vector ([subexpr (in-vector subexpressions)])
+          (production-expression-simplify subexpr)))]
+
+    [(choice-expression choices)
+     (choice-expression
+      (for/vector ([subexpr (in-vector choices)])
+        (production-expression-simplify subexpr)))]
+
+    [(? repetition-expression?)
+     (match* ((repetition-expression-min-count expression)
+              (repetition-expression-max-count expression))
+       [(0 +inf.0)
+        (repetition-expression
+         (production-expression-simplify (repetition-expression-subexpression expression)))]
+       [(0 max)
+        (define subexpr
+          (production-expression-simplify (repetition-expression-subexpression expression)))
+        (for/fold ([expr (choice-expression (list (group-expression '()) subexpr))])
+                  ([_ (in-range (sub1 max))])
+          (choice-expression (list (group-expression '()) (group-expression (list subexpr expr)))))]
+       [(min +inf.0)
+        (define subexpr
+          (production-expression-simplify (repetition-expression-subexpression expression)))
+        (group-expression
+         (sequence-append (make-list min subexpr) (list (repetition-expression subexpr))))]
+       [(min max)
+        (define subexpr
+          (production-expression-simplify (repetition-expression-subexpression expression)))
+        (define tail-expr
+          (for/fold ([expr (choice-expression (list (group-expression '()) subexpr))])
+                    ([_ (in-range (- max min 1))])
+            (choice-expression (list (group-expression '()) (group-expression (list subexpr expr))))))
+        (group-expression (sequence-append (make-list min subexpr) (list tail-expr)))])]))
 
 
 (define (vector-reverse vec)
@@ -255,6 +300,10 @@
 
     (define x (nonterminal-symbol 'x))
     (define x.0 (nonterminal-symbol (virtual-symbol 'x 0)))
+    (define x.1 (nonterminal-symbol (virtual-symbol 'x 1)))
+    (define x.2 (nonterminal-symbol (virtual-symbol 'x 2)))
+    (define x.3 (nonterminal-symbol (virtual-symbol 'x 3)))
+    (define x.4 (nonterminal-symbol (virtual-symbol 'x 4)))
     (define a (terminal-symbol 'a))
     (define b (terminal-symbol 'b))
     (define c (terminal-symbol 'c))
@@ -305,8 +354,8 @@
     ;; ->
     ;;
     ;; x: a x.0
-    ;; x.0: b x.0 (* splice *)
     ;; x.0: (* splice *)
+    ;; x.0: b x.0 (* splice *)
     (test-case "repeating"
       (define rule
         (production-rule
@@ -317,12 +366,96 @@
         (vector
          (flat-production-rule
           #:nonterminal x #:action (label-action 'x) #:substitution (list a x.0 c))
+         (flat-production-rule #:nonterminal x.0 #:action splice-action #:substitution '())
+         (flat-production-rule #:nonterminal x.0 #:action splice-action #:substitution (list b x.0))))
+      (check-equal? (production-rule-flatten rule) expected-rules))
+
+    ;; x: a b{3..} c
+    ;;
+    ;; ->
+    ;;
+    ;; x: a x.0 c
+    ;; x.0: b b b x.1 (* splice *)
+    ;; x.1: (* splice *)
+    ;; x.1: b x.1 (* splice *)
+    (test-case "repeating with min count"
+      (define rule
+        (production-rule
+         #:nonterminal x
+         #:action (label-action 'x)
+         #:substitution (group-expression (list a (repetition-expression b #:min-count 3) c))))
+      (define expected-rules
+        (vector
          (flat-production-rule
-          #:nonterminal x.0
-          #:action splice-action
-          #:substitution (list b x.0))
+          #:nonterminal x #:action (label-action 'x) #:substitution (list a x.0 c))
          (flat-production-rule
-          #:nonterminal x.0
-          #:action splice-action
-          #:substitution '())))
+          #:nonterminal x.0 #:action splice-action #:substitution (list b b b x.1))
+         (flat-production-rule #:nonterminal x.1 #:action splice-action #:substitution '())
+         (flat-production-rule #:nonterminal x.1 #:action splice-action #:substitution (list b x.1))))
+      (check-equal? (production-rule-flatten rule) expected-rules))
+
+    ;; x: a b{0..5} c
+    ;;
+    ;; ->
+    ;;
+    ;; x: a x.0 c
+    ;; x.0: (* splice *)
+    ;; x.0: b x.1 (* splice *)
+    ;; x.1: (* splice *)
+    ;; x.1: b x.2 (* splice *)
+    ;; x.2: (* splice *)
+    ;; x.2: b x.3 (* splice *)
+    ;; x.3: (* splice *)
+    ;; x.3: b x.4 (* splice *)
+    ;; x.4: (* splice *)
+    ;; x.4: b (* splice *)
+    (test-case "repeating with max count"
+      (define rule
+        (production-rule
+         #:nonterminal x
+         #:action (label-action 'x)
+         #:substitution (group-expression (list a (repetition-expression b #:max-count 5) c))))
+      (define expected-rules
+        (vector
+         (flat-production-rule
+          #:nonterminal x #:action (label-action 'x) #:substitution (list a x.0 c))
+         (flat-production-rule #:nonterminal x.0 #:action splice-action #:substitution '())
+         (flat-production-rule #:nonterminal x.0 #:action splice-action #:substitution (list b x.1))
+         (flat-production-rule #:nonterminal x.1 #:action splice-action #:substitution '())
+         (flat-production-rule #:nonterminal x.1 #:action splice-action #:substitution (list b x.2))
+         (flat-production-rule #:nonterminal x.2 #:action splice-action #:substitution '())
+         (flat-production-rule #:nonterminal x.2 #:action splice-action #:substitution (list b x.3))
+         (flat-production-rule #:nonterminal x.3 #:action splice-action #:substitution '())
+         (flat-production-rule #:nonterminal x.3 #:action splice-action #:substitution (list b x.4))
+         (flat-production-rule #:nonterminal x.4 #:action splice-action #:substitution '())
+         (flat-production-rule #:nonterminal x.4 #:action splice-action #:substitution (list b))))
+      (check-equal? (production-rule-flatten rule) expected-rules))
+
+    ;; x: a b{3..5} c
+    ;;
+    ;; ->
+    ;;
+    ;; x: a x.0 c
+    ;; x.0: b b b x.1 (* splice *)
+    ;; x.1: (* splice *)
+    ;; x.1: b x.2 (* splice *)
+    ;; x.2: (* splice *)
+    ;; x.2: b (* splice *)
+    (test-case "repeating with min and max count"
+      (define rule
+        (production-rule
+         #:nonterminal x
+         #:action (label-action 'x)
+         #:substitution
+         (group-expression (list a (repetition-expression b #:min-count 3 #:max-count 5) c))))
+      (define expected-rules
+        (vector
+         (flat-production-rule
+          #:nonterminal x #:action (label-action 'x) #:substitution (list a x.0 c))
+         (flat-production-rule
+          #:nonterminal x.0 #:action splice-action #:substitution (list b b b x.1))
+         (flat-production-rule #:nonterminal x.1 #:action splice-action #:substitution '())
+         (flat-production-rule #:nonterminal x.1 #:action splice-action #:substitution (list b x.2))
+         (flat-production-rule #:nonterminal x.2 #:action splice-action #:substitution '())
+         (flat-production-rule #:nonterminal x.2 #:action splice-action #:substitution (list b))))
       (check-equal? (production-rule-flatten rule) expected-rules))))
