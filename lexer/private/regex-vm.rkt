@@ -1,6 +1,10 @@
 #lang racket/base
 
 
+(provide
+ (all-defined-out))
+
+
 (require (for-syntax racket/base
                      syntax/parse)
          racket/match
@@ -24,6 +28,24 @@
 ;; https://swtch.com/~rsc/regexp/regexp2.html.
 
 
+(define (hash->immutable-hash h)
+  (if (and (hash? h) (immutable? h))
+      h
+      (for/hash ([(k v) (in-hash h)])
+        (values k v))))
+
+
+(define (compiled-regex-with-labels program labels)
+  (compiled-regex
+   (for/vector ([instruction (in-vector program)])
+     (match instruction
+       [(labeled-jump-instruction label)
+        (jump-instruction (hash-ref labels label))]
+       [(labeled-split-instruction primary secondary)
+        (split-instruction (hash-ref labels primary) (hash-ref labels secondary))]
+       [other other]))))
+
+
 (struct compiled-regex (program)
   #:transparent
   #:guard (λ (instructions _) (sequence->vector instructions)))
@@ -31,10 +53,15 @@
 
 (struct regex-instruction () #:transparent)
 (struct read-instruction regex-instruction (expected-char) #:transparent)
+(struct peek-instruction regex-instruction (expected-char) #:transparent)
+(struct reset-peek-instruction regex-instruction () #:transparent)
 (struct jump-instruction regex-instruction (address) #:transparent)
 (struct split-instruction regex-instruction (primary-address secondary-address) #:transparent)
+(struct labeled-jump-instruction regex-instruction (label) #:transparent)
+(struct labeled-split-instruction regex-instruction (primary-label secondary-label) #:transparent)
 (struct match-instruction regex-instruction (mode) #:transparent)
 (struct save-instruction regex-instruction (savepoint) #:transparent)
+(struct fail-instruction regex-instruction () #:transparent)
 
 
 (define (compiled-regex-savepoint-count compiled)
@@ -64,29 +91,30 @@
   (vector-ref (thread-list-threads-by-priority-order threads) index))
 
 
-(define (thread-list-add! threads thread #:program program #:input-index i)
-  (define pc (regex-thread-program-counter thread))
-  (define savepoints (regex-thread-savepoints thread))
-  (match (vector-ref program pc)
-    [(jump-instruction address)
-     (define new-thread (regex-thread address savepoints))
-     (thread-list-add! threads new-thread #:program program #:input-index i)]
-    [(split-instruction primary secondary)
-     (define primary-thread (regex-thread primary savepoints))
-     (define secondary-thread (regex-thread secondary (vector-copy savepoints)))
-     (thread-list-add! threads primary-thread #:program program #:input-index i)
-     (thread-list-add! threads secondary-thread #:program program #:input-index i)]
-    [(save-instruction savepoint)
-     (vector-set! savepoints savepoint i)
-     (define new-thread (regex-thread (add1 pc) savepoints))
-     (thread-list-add! threads new-thread #:program program #:input-index i)]
-    [_
-     (define by-pc (thread-list-threads-by-program-counter threads))
-     (unless (vector-ref by-pc pc)
-       (define size (thread-list-size threads))
-       (vector-set! by-pc pc thread)
-       (vector-set! (thread-list-threads-by-priority-order threads) size thread)
-       (set-thread-list-size! threads (add1 size)))]))
+(define (thread-list-add! threads thread #:program program #:input input #:input-index i)
+  (let loop ([thread thread] [i i] [pi i])
+    (define pc (regex-thread-program-counter thread))
+    (define savepoints (regex-thread-savepoints thread))
+    (match (vector-ref program pc)
+      [(jump-instruction address) (loop (regex-thread address savepoints) i pi)]
+      [(split-instruction primary secondary)
+       (define secondary-savepoints (vector-copy savepoints))
+       (loop (regex-thread primary savepoints) i pi)
+       (loop (regex-thread secondary secondary-savepoints) i pi)]
+      [(save-instruction savepoint)
+       (vector-set! savepoints savepoint i)
+       (loop (regex-thread (add1 pc) savepoints) i pi)]
+      [(peek-instruction expected)
+       (when (equal? (string-ref input pi) expected)
+         (loop (regex-thread (add1 pc) savepoints) i (add1 pi)))]
+      [(reset-peek-instruction) (loop (regex-thread (add1 pc) savepoints) i i)]
+      [_
+       (define by-pc (thread-list-threads-by-program-counter threads))
+       (unless (vector-ref by-pc pc)
+         (define size (thread-list-size threads))
+         (vector-set! by-pc pc thread)
+         (vector-set! (thread-list-threads-by-priority-order threads) size thread)
+         (set-thread-list-size! threads (add1 size)))])))
 
 
 (define (thread-list-clear! threads)
@@ -112,7 +140,7 @@
   
   (define running-threads (make-thread-list #:program-size (vector-length program)))
   (define blocked-threads (make-thread-list #:program-size (vector-length program)))
-  (thread-list-add! running-threads (make-thread) #:program program #:input-index 0)
+  (thread-list-add! running-threads (make-thread) #:program program #:input str #:input-index 0)
   (for/fold ([running-threads running-threads]
              [blocked-threads blocked-threads]
              [last-match #false]
@@ -134,6 +162,7 @@
               (thread-list-add! blocked-threads
                                 next-thread
                                 #:program program
+                                #:input str
                                 #:input-index input-index))
             (loop (add1 i))]
            [(match-instruction mode)
@@ -216,4 +245,29 @@
         (read-instruction #\b)
         (save-instruction 2)
         (match-instruction 0))))
-    (check-equal? (compiled-regex-match-string r "aaabbb") (regex-execution-result 0 '(0 2 5)))))
+    (check-equal? (compiled-regex-match-string r "aaabbb") (regex-execution-result 0 '(0 2 5))))
+
+  (test-case (name-string peek-instruction)
+    (define r
+      (compiled-regex
+       (list
+        (save-instruction 0)
+        (peek-instruction #\a)
+        (peek-instruction #\b)
+        (peek-instruction #\c)
+        (save-instruction 1)
+        (match-instruction 0))))
+    (check-equal? (compiled-regex-match-string r "abc") (regex-execution-result 0 '(0 0))))
+
+  (test-case (name-string reset-peek-instruction)
+    (define r
+      (compiled-regex
+       (list
+        (save-instruction 0)
+        (peek-instruction #\a)
+        (peek-instruction #\b)
+        (reset-peek-instruction)
+        (peek-instruction #\a)
+        (save-instruction 1)
+        (match-instruction 0))))
+    (check-equal? (compiled-regex-match-string r "abc") (regex-execution-result 0 '(0 0)))))
