@@ -1,9 +1,37 @@
 #lang racket/base
 
 
+(require racket/contract/base)
+
+
+(provide
+ (contract-out
+  [regular-pattern? predicate/c]
+  [element-pattern (-> any/c regular-pattern?)]
+  [element-string-pattern (-> (sequence/c any/c) regular-pattern?)]
+  [element-set-pattern (-> (sequence/c any/c) regular-pattern?)]
+  [group-pattern (->* ((sequence/c regular-pattern?)) (#:capture? boolean?) regular-pattern?)]
+  [choice-pattern (-> (sequence/c regular-pattern?) regular-pattern?)]
+  [repetition-pattern
+   (->i ([subpattern regular-pattern?])
+        (#:min-count [min-count exact-nonnegative-integer?]
+         #:max-count [max-count (or/c exact-nonnegative-integer? +inf.0)]
+         #:greedy? [_ boolean?])
+        #:pre/name (min-count max-count)
+        "minimum repetition count cannot be greater than the maximum repetition count"
+        (or (unsupplied-arg? min-count) (unsupplied-arg? max-count) (<= min-count max-count))
+        [_ regular-pattern?])]
+  [lookahead-pattern (-> regular-pattern? regular-pattern?)]
+  [regular-pattern-compile (-> regular-pattern? compiled-regex?)]
+  [regular-patterns-compile (-> (sequence/c regular-pattern?) compiled-regex?)]))
+
+
 (require racket/match
+         racket/sequence
+         racket/set
          rebellion/collection/vector
          rebellion/collection/vector/builder
+         rebellion/streaming/transducer
          yaragg/lexer/private/regex-vm)
 
 
@@ -16,33 +44,72 @@
 ;@----------------------------------------------------------------------------------------------------
 
 
-(struct tagged-regular-pattern (pattern success-value) #:transparent)
-
-
 (struct regular-pattern () #:transparent)
 
 
-(struct char-pattern regular-pattern (expected-char) #:transparent)
+(struct element-pattern regular-pattern (expected-char) #:transparent)
+
+
+(define (element-string-pattern elements)
+  (group-pattern (for/vector ([e elements]) (element-pattern e))))
+
+
+(define (element-set-pattern elements)
+  ;; We deduplicate and build a vector instead of building a set to ensure the order of the elements
+  ;; is preserved. This isn't strictly necessary, but it makes the API and tests deterministic.
+  (define choices
+    (transduce elements
+               (deduplicating)
+               (mapping element-pattern)
+               #:into (into-vector)))
+  (choice-pattern choices))
 
 
 (struct group-pattern regular-pattern (subpatterns capture?)
   #:transparent
+  #:name struct-transformer:group-pattern
+  #:constructor-name constructor:group-pattern
   #:guard (λ (subpatterns capture? _) (values (sequence->vector subpatterns) capture?)))
+
+
+(define (group-pattern #:capture? [capture? #false] subpatterns)
+  (constructor:group-pattern subpatterns capture?))
 
 
 (struct choice-pattern regular-pattern (choices)
   #:transparent
+  #:name struct-transformer:choice-pattern
+  #:constructor-name constructor:choice-pattern
   #:guard (λ (choices _) (sequence->vector choices)))
 
 
-(struct repetition-pattern regular-pattern (subpattern min-count max-count greedy?) #:transparent)
+(define (choice-pattern choices)
+  (constructor:choice-pattern choices))
+
+
+(struct repetition-pattern regular-pattern (subpattern min-count max-count greedy?)
+  #:transparent
+  #:name struct-transformer:repetition-pattern
+  #:constructor-name constructor:repetition-pattern)
+
+
+(define (repetition-pattern subpattern
+                            #:min-count [min-count 0]
+                            #:max-count [max-count +inf.0]
+                            #:greedy? [greedy? #true])
+  (constructor:repetition-pattern subpattern min-count max-count greedy?))
 
 
 (struct lookahead-pattern regular-pattern (subpattern) #:transparent)
 
 
+(define (regular-pattern-compile pattern)
+  (regular-patterns-compile (vector-immutable pattern)))
+
+
 (define (regular-patterns-compile patterns)
   (define pattern-vector (sequence->vector patterns))
+  (define pattern-count (vector-length pattern-vector))
   (define instructions (make-vector-builder))
   (define labels (make-hash))
   (define instruction-counter 0)
@@ -66,20 +133,18 @@
     (vector-builder-add instructions instruction)
     (set! instruction-counter (add1 instruction-counter)))
 
-  (define (compile-pattern! tagged-pattern)
-    (match-define (tagged-regular-pattern pattern success-value) tagged-pattern)
-
+  (define (compile-pattern! pattern pattern-index)
     (let loop ([pattern pattern] [peeking? #false])
       (match pattern
 
-        [(char-pattern expected)
+        [(element-pattern expected)
          (add-instruction! (if peeking? (peek-instruction expected) (read-instruction expected)))]
 
         [(lookahead-pattern subpattern)
          (loop subpattern #true)
          (add-instruction! (reset-peek-instruction))]
 
-        [(group-pattern subpatterns capture?)
+        [(struct-transformer:group-pattern subpatterns capture?)
          (when capture?
            (add-instruction! (save-instruction (next-savepoint!))))
          (for ([subpattern (in-vector subpatterns)])
@@ -87,7 +152,7 @@
          (when capture?
            (add-instruction! (save-instruction (next-savepoint!))))]
 
-        [(choice-pattern choices)
+        [(struct-transformer:choice-pattern choices)
          (define post-choice-label (next-label!))
          (for ([choice (in-vector choices 0 (- (vector-length choices) 1))])
            (define choice-label (next-label!))
@@ -100,7 +165,7 @@
          (loop (vector-ref choices (- (vector-length choices) 1)) peeking?)
          (label! post-choice-label)]
 
-        [(repetition-pattern subpattern 0 +inf.0 greedy?)
+        [(struct-transformer:repetition-pattern subpattern 0 +inf.0 greedy?)
          (define loop-label (next-label!))
          (define read-label (next-label!))
          (define skip-label (next-label!))
@@ -114,7 +179,7 @@
          (add-instruction! (labeled-jump-instruction loop-label))
          (label! skip-label)]
 
-        [(repetition-pattern subpattern 0 m greedy?)
+        [(struct-transformer:repetition-pattern subpattern 0 m greedy?)
          #:when (< m +inf.0)
          (for ([_ (in-range m)])
            (define read-label (next-label!))
@@ -127,52 +192,54 @@
            (loop subpattern peeking?)
            (label! skip-label))]
 
-        [(repetition-pattern subpattern n m greedy?)
+        [(struct-transformer:repetition-pattern subpattern n m greedy?)
          #:when (> n 0)
          (for ([_ (in-range n)])
            (loop subpattern peeking?))
-         (loop (repetition-pattern subpattern 0 (- m n) greedy?) peeking?)]))
+         (loop (repetition-pattern subpattern #:max-count (- m n) #:greedy? greedy?) peeking?)]))
 
-    (add-instruction! (match-instruction success-value)))
+    (add-instruction! (match-instruction pattern-index)))
 
-  (for ([tagged-pattern (in-vector pattern-vector 0 (sub1 (vector-length pattern-vector)))])
+  (for ([pattern (in-vector pattern-vector 0 (sub1 pattern-count))]
+        [i (in-naturals)])
     (define pattern-label (next-label!))
     (define skip-label (next-label!))
     (add-instruction! (labeled-split-instruction pattern-label skip-label))
     (label! pattern-label)
-    (compile-pattern! tagged-pattern)
+    (compile-pattern! pattern i)
     (label! skip-label))
-  (compile-pattern! (vector-ref pattern-vector (sub1 (vector-length pattern-vector))))
+  (define last-index (sub1 pattern-count))
+  (compile-pattern! (vector-ref pattern-vector last-index) last-index)
   (compiled-regex-with-labels (build-vector instructions) labels))
 
 
 (module+ test
   (test-case (name-string regular-patterns-compile)
 
-    (test-case (name-string char-pattern)
-      (define tagged-pattern (tagged-regular-pattern (char-pattern #\a) 42))
-      (define expected (compiled-regex (list (read-instruction #\a) (match-instruction 42))))
-      (check-equal? (regular-patterns-compile (list tagged-pattern)) expected))
+    (test-case (name-string element-pattern)
+      (define pattern (element-pattern #\a))
+      (define expected (compiled-regex (list (read-instruction #\a) (match-instruction 0))))
+      (check-equal? (regular-pattern-compile pattern) expected))
+
+    (define a (element-pattern #\a))
+    (define b (element-pattern #\b))
+    (define c (element-pattern #\c))
 
     (test-case (name-string group-pattern)
 
       (test-case "non-capturing"
-        (define pattern
-          (group-pattern (list (char-pattern #\a) (char-pattern #\b) (char-pattern #\c)) #false))
-        (define tagged-pattern (tagged-regular-pattern pattern 42))
+        (define pattern (group-pattern (list a b c)))
         (define expected
           (compiled-regex
            (list
             (read-instruction #\a)
             (read-instruction #\b)
             (read-instruction #\c)
-            (match-instruction 42))))
-        (check-equal? (regular-patterns-compile (list tagged-pattern)) expected))
+            (match-instruction 0))))
+        (check-equal? (regular-pattern-compile pattern) expected))
 
       (test-case "capturing"
-        (define pattern
-          (group-pattern (list (char-pattern #\a) (char-pattern #\b) (char-pattern #\c)) #true))
-        (define tagged-pattern (tagged-regular-pattern pattern 42))
+        (define pattern (group-pattern (list a b c) #:capture? #true))
         (define expected
           (compiled-regex
            (list
@@ -181,13 +248,11 @@
             (read-instruction #\b)
             (read-instruction #\c)
             (save-instruction 1)
-            (match-instruction 42))))
-        (check-equal? (regular-patterns-compile (list tagged-pattern)) expected)))
+            (match-instruction 0))))
+        (check-equal? (regular-pattern-compile pattern) expected)))
 
     (test-case (name-string choice-pattern)
-      (define pattern
-        (choice-pattern (list (char-pattern #\a) (char-pattern #\b) (char-pattern #\c))))
-      (define tagged-pattern (tagged-regular-pattern pattern 42))
+      (define pattern (choice-pattern (list a b c)))
       (define expected
         (compiled-regex
          (list
@@ -198,17 +263,30 @@
           (read-instruction #\b)
           (jump-instruction 7)
           (read-instruction #\c)
-          (match-instruction 42))))
-      (check-equal? (regular-patterns-compile (list tagged-pattern)) expected))
+          (match-instruction 0))))
+      (check-equal? (regular-pattern-compile pattern) expected))
 
-    (define abc-pattern
-      (group-pattern (list (char-pattern #\a) (char-pattern #\b) (char-pattern #\c)) #false))
+    (test-case (name-string element-string-pattern)
+      (define expected (group-pattern (list a b c)))
+      (check-equal? (element-string-pattern (list #\a #\b #\c)) expected)
+      (check-equal? (element-string-pattern (list #\a #\b #\c)) expected)
+      (check-equal? (element-string-pattern "abc") expected))
+
+    (test-case (name-string element-set-pattern)
+      (define expected (choice-pattern (list a b c)))
+      (check-equal? (element-set-pattern (list #\a #\b #\c)) expected)
+      (check-equal? (element-set-pattern (list #\a #\b #\c)) expected)
+      (check-equal? (element-set-pattern "abc") expected)
+      (check-equal? (element-set-pattern "aabbcc") expected)
+      (check-equal? (element-set-pattern "abcabc") expected)
+      (check-equal? (element-set-pattern "abccba") expected))
+
+    (define abc (element-string-pattern "abc"))
 
     (test-case (name-string repetition-pattern)
 
       (test-case "greedy without quantifiers"
-        (define pattern (repetition-pattern abc-pattern 0 +inf.0 #true))
-        (define tagged-pattern (tagged-regular-pattern pattern 42))
+        (define pattern (repetition-pattern abc))
         (define expected
           (compiled-regex
            (list
@@ -217,12 +295,11 @@
             (read-instruction #\b)
             (read-instruction #\c)
             (jump-instruction 0)
-            (match-instruction 42))))
-        (check-equal? (regular-patterns-compile (list tagged-pattern)) expected))
+            (match-instruction 0))))
+        (check-equal? (regular-pattern-compile pattern) expected))
 
       (test-case "non-greedy without quantifiers"
-        (define pattern (repetition-pattern abc-pattern 0 +inf.0 #false))
-        (define tagged-pattern (tagged-regular-pattern pattern 42))
+        (define pattern (repetition-pattern abc #:greedy? #false))
         (define expected
           (compiled-regex
            (list
@@ -231,12 +308,11 @@
             (read-instruction #\b)
             (read-instruction #\c)
             (jump-instruction 0)
-            (match-instruction 42))))
-        (check-equal? (regular-patterns-compile (list tagged-pattern)) expected))
+            (match-instruction 0))))
+        (check-equal? (regular-pattern-compile pattern) expected))
 
       (test-case "greedy with minimum quantity"
-        (define pattern (repetition-pattern abc-pattern 3 +inf.0 #true))
-        (define tagged-pattern (tagged-regular-pattern pattern 42))
+        (define pattern (repetition-pattern abc #:min-count 3))
         (define expected
           (compiled-regex
            (list
@@ -254,12 +330,11 @@
             (read-instruction #\b)
             (read-instruction #\c)
             (jump-instruction 9)
-            (match-instruction 42))))
-        (check-equal? (regular-patterns-compile (list tagged-pattern)) expected))
+            (match-instruction 0))))
+        (check-equal? (regular-pattern-compile pattern) expected))
 
       (test-case "non-greedy with minimum quantity"
-        (define pattern (repetition-pattern abc-pattern 3 +inf.0 #false))
-        (define tagged-pattern (tagged-regular-pattern pattern 42))
+        (define pattern (repetition-pattern abc #:min-count 3 #:greedy? #false))
         (define expected
           (compiled-regex
            (list
@@ -277,12 +352,11 @@
             (read-instruction #\b)
             (read-instruction #\c)
             (jump-instruction 9)
-            (match-instruction 42))))
-        (check-equal? (regular-patterns-compile (list tagged-pattern)) expected))
+            (match-instruction 0))))
+        (check-equal? (regular-pattern-compile pattern) expected))
 
       (test-case "greedy with maximum quantity"
-        (define pattern (repetition-pattern abc-pattern 0 3 #true))
-        (define tagged-pattern (tagged-regular-pattern pattern 42))
+        (define pattern (repetition-pattern abc #:max-count 3))
         (define expected
           (compiled-regex
            (list
@@ -298,12 +372,11 @@
             (read-instruction #\a)
             (read-instruction #\b)
             (read-instruction #\c)
-            (match-instruction 42))))
-        (check-equal? (regular-patterns-compile (list tagged-pattern)) expected))
+            (match-instruction 0))))
+        (check-equal? (regular-pattern-compile pattern) expected))
 
       (test-case "non-greedy with maximum quantity"
-        (define pattern (repetition-pattern abc-pattern 0 3 #false))
-        (define tagged-pattern (tagged-regular-pattern pattern 42))
+        (define pattern (repetition-pattern abc #:max-count 3 #:greedy? #false))
         (define expected
           (compiled-regex
            (list
@@ -319,12 +392,11 @@
             (read-instruction #\a)
             (read-instruction #\b)
             (read-instruction #\c)
-            (match-instruction 42))))
-        (check-equal? (regular-patterns-compile (list tagged-pattern)) expected))
+            (match-instruction 0))))
+        (check-equal? (regular-pattern-compile pattern) expected))
 
       (test-case "greedy with minimum and maximum quantity"
-        (define pattern (repetition-pattern abc-pattern 3 5 #true))
-        (define tagged-pattern (tagged-regular-pattern pattern 42))
+        (define pattern (repetition-pattern abc #:min-count 3 #:max-count 5))
         (define expected
           (compiled-regex
            (list
@@ -345,12 +417,11 @@
             (read-instruction #\a)
             (read-instruction #\b)
             (read-instruction #\c)
-            (match-instruction 42))))
-        (check-equal? (regular-patterns-compile (list tagged-pattern)) expected))
+            (match-instruction 0))))
+        (check-equal? (regular-pattern-compile pattern) expected))
 
       (test-case "non-greedy with minimum and maximum quantity"
-        (define pattern (repetition-pattern abc-pattern 3 5 #false))
-        (define tagged-pattern (tagged-regular-pattern pattern 42))
+        (define pattern (repetition-pattern abc #:min-count 3 #:max-count 5 #:greedy? #false))
         (define expected
           (compiled-regex
            (list
@@ -371,12 +442,11 @@
             (read-instruction #\a)
             (read-instruction #\b)
             (read-instruction #\c)
-            (match-instruction 42))))
-        (check-equal? (regular-patterns-compile (list tagged-pattern)) expected)))
+            (match-instruction 0))))
+        (check-equal? (regular-pattern-compile pattern) expected)))
 
     (test-case (name-string lookahead-pattern)
-      (define pattern (lookahead-pattern abc-pattern))
-      (define tagged-pattern (tagged-regular-pattern pattern 42))
+      (define pattern (lookahead-pattern abc))
       (define expected
         (compiled-regex
          (list
@@ -384,21 +454,15 @@
           (peek-instruction #\b)
           (peek-instruction #\c)
           (reset-peek-instruction)
-          (match-instruction 42))))
-      (check-equal? (regular-patterns-compile (list tagged-pattern)) expected))
+          (match-instruction 0))))
+      (check-equal? (regular-pattern-compile pattern) expected))
 
-    (test-case "multiple tagged patterns"
-      (define aaa-pattern
-        (group-pattern (list (char-pattern #\a) (char-pattern #\a) (char-pattern #\a)) #false))
-      (define bbb-pattern
-        (group-pattern (list (char-pattern #\b) (char-pattern #\b) (char-pattern #\b)) #false))
-      (define ccc-pattern
-        (group-pattern (list (char-pattern #\c) (char-pattern #\c) (char-pattern #\c)) #false))
+    (test-case "multiple patterns"
       (define patterns
         (list
-         (tagged-regular-pattern aaa-pattern "three As")
-         (tagged-regular-pattern bbb-pattern "three Bs")
-         (tagged-regular-pattern ccc-pattern "three Cs")))
+         (element-string-pattern "aaa")
+         (element-string-pattern "bbb")
+         (element-string-pattern "ccc")))
       (define expected
         (compiled-regex
          (list
@@ -406,14 +470,14 @@
           (read-instruction #\a)
           (read-instruction #\a)
           (read-instruction #\a)
-          (match-instruction "three As")
+          (match-instruction 0)
           (split-instruction 6 10)
           (read-instruction #\b)
           (read-instruction #\b)
           (read-instruction #\b)
-          (match-instruction "three Bs")
+          (match-instruction 1)
           (read-instruction #\c)
           (read-instruction #\c)
           (read-instruction #\c)
-          (match-instruction "three Cs"))))
+          (match-instruction 2))))
       (check-equal? (regular-patterns-compile patterns) expected))))
