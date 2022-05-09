@@ -24,7 +24,9 @@
         [_ regular-pattern?])]
   [optional-pattern (->* (regular-pattern?) (#:greedy? boolean?) regular-pattern?)]
   [lookahead-pattern (-> regular-pattern? regular-pattern?)]
-  [regular-pattern-compile (-> regular-pattern? compiled-regex?)]))
+  [regular-pattern-compile (-> regular-pattern? compiled-regex?)]
+  [regular-pattern-match-string
+   (-> regular-pattern? string? (or/c regular-match? regular-match-failure?))]))
 
 
 (require racket/match
@@ -34,7 +36,8 @@
          rebellion/collection/vector
          rebellion/collection/vector/builder
          rebellion/streaming/transducer
-         yaragg/lexer/private/regex-vm)
+         yaragg/lexer/private/regex-vm
+         yaragg/lexer/private/regular-match)
 
 
 (module+ test
@@ -128,73 +131,77 @@
     (set! instruction-counter (add1 instruction-counter)))
 
   (let loop ([pattern pattern] [peeking? #false])
-      (match pattern
+    (match pattern
 
-        [(element-pattern expected)
-         (add-instruction! (if peeking? (peek-instruction expected) (read-instruction expected)))]
+      [(element-pattern expected)
+       (add-instruction! (if peeking? (peek-instruction expected) (read-instruction expected)))]
 
-        [(lookahead-pattern subpattern)
-         (loop subpattern #true)
-         (add-instruction! (reset-peek-instruction))]
+      [(lookahead-pattern subpattern)
+       (loop subpattern #true)
+       (add-instruction! (reset-peek-instruction))]
 
-        [(struct-transformer:group-pattern subpatterns (== absent))
-         (for ([subpattern (in-vector subpatterns)])
-           (loop subpattern peeking?))]
+      [(struct-transformer:group-pattern subpatterns (== absent))
+       (for ([subpattern (in-vector subpatterns)])
+         (loop subpattern peeking?))]
 
-        [(struct-transformer:group-pattern subpatterns (present key))
-         (add-instruction! (start-group-instruction key))
-         (loop (group-pattern subpatterns) peeking?)
-         (add-instruction! (finish-group-instruction key))]
+      [(struct-transformer:group-pattern subpatterns (present key))
+       (add-instruction! (start-group-instruction key))
+       (loop (group-pattern subpatterns) peeking?)
+       (add-instruction! (finish-group-instruction key))]
 
-        [(struct-transformer:choice-pattern choices)
-         (define post-choice-label (next-label!))
-         (for ([choice (in-vector choices 0 (- (vector-length choices) 1))])
-           (define choice-label (next-label!))
-           (define next-split-label (next-label!))
-           (add-instruction! (labeled-split-instruction choice-label next-split-label))
-           (label! choice-label)
-           (loop choice peeking?)
-           (add-instruction! (labeled-jump-instruction post-choice-label))
-           (label! next-split-label))
-         (loop (vector-ref choices (- (vector-length choices) 1)) peeking?)
-         (label! post-choice-label)]
+      [(struct-transformer:choice-pattern choices)
+       (define post-choice-label (next-label!))
+       (for ([choice (in-vector choices 0 (- (vector-length choices) 1))])
+         (define choice-label (next-label!))
+         (define next-split-label (next-label!))
+         (add-instruction! (labeled-split-instruction choice-label next-split-label))
+         (label! choice-label)
+         (loop choice peeking?)
+         (add-instruction! (labeled-jump-instruction post-choice-label))
+         (label! next-split-label))
+       (loop (vector-ref choices (- (vector-length choices) 1)) peeking?)
+       (label! post-choice-label)]
 
-        [(struct-transformer:repetition-pattern subpattern 0 +inf.0 greedy?)
-         (define loop-label (next-label!))
+      [(struct-transformer:repetition-pattern subpattern 0 +inf.0 greedy?)
+       (define loop-label (next-label!))
+       (define read-label (next-label!))
+       (define skip-label (next-label!))
+       (label! loop-label)
+       (add-instruction!
+        (if greedy?
+            (labeled-split-instruction read-label skip-label)
+            (labeled-split-instruction skip-label read-label)))
+       (label! read-label)
+       (loop subpattern peeking?)
+       (add-instruction! (labeled-jump-instruction loop-label))
+       (label! skip-label)]
+
+      [(struct-transformer:repetition-pattern subpattern 0 m greedy?)
+       #:when (< m +inf.0)
+       (for ([_ (in-range m)])
          (define read-label (next-label!))
          (define skip-label (next-label!))
-         (label! loop-label)
          (add-instruction!
           (if greedy?
               (labeled-split-instruction read-label skip-label)
               (labeled-split-instruction skip-label read-label)))
          (label! read-label)
          (loop subpattern peeking?)
-         (add-instruction! (labeled-jump-instruction loop-label))
-         (label! skip-label)]
+         (label! skip-label))]
 
-        [(struct-transformer:repetition-pattern subpattern 0 m greedy?)
-         #:when (< m +inf.0)
-         (for ([_ (in-range m)])
-           (define read-label (next-label!))
-           (define skip-label (next-label!))
-           (add-instruction!
-            (if greedy?
-                (labeled-split-instruction read-label skip-label)
-                (labeled-split-instruction skip-label read-label)))
-           (label! read-label)
-           (loop subpattern peeking?)
-           (label! skip-label))]
+      [(struct-transformer:repetition-pattern subpattern n m greedy?)
+       #:when (> n 0)
+       (for ([_ (in-range n)])
+         (loop subpattern peeking?))
+       (loop (repetition-pattern subpattern #:max-count (- m n) #:greedy? greedy?) peeking?)]))
 
-        [(struct-transformer:repetition-pattern subpattern n m greedy?)
-         #:when (> n 0)
-         (for ([_ (in-range n)])
-           (loop subpattern peeking?))
-         (loop (repetition-pattern subpattern #:max-count (- m n) #:greedy? greedy?) peeking?)]))
-
-    (add-instruction! (match-instruction))
+  (add-instruction! (match-instruction))
 
   (compiled-regex-with-labels (build-vector instructions) labels))
+
+
+(define (regular-pattern-match-string pattern str)
+  (compiled-regex-match-string (regular-pattern-compile pattern) str))
 
 
 (module+ test
