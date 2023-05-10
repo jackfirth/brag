@@ -8,9 +8,7 @@
  (contract-out
   [parser? predicate/c]
   [parse-datum (-> parser? (sequence/c token?) any/c)]
-  [parse-syntax (-> parser? (sequence/c syntax-token?) syntax?)]
-  [parse-ambiguous-datum (-> parser? (sequence/c token?) (set/c any/c))]
-  [parse-ambiguous-syntax (-> parser? (sequence/c syntax-token?) (set/c syntax?))]))
+  [parse-syntax (-> parser? (sequence/c token?) syntax?)]))
 
 
 (module+ private
@@ -50,7 +48,7 @@
 (define (parse-syntax p token-sequence)
   (define tokens
     (for/vector ([t token-sequence])
-      (token (syntax-token-type t) t)))
+      t))
   (define derivations ((parser-deriver p) tokens))
   (when (stream-empty? derivations)
     (raise-arguments-error 'parse-syntax "no parse trees produced" "parser" p "tokens" tokens))

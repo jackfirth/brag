@@ -142,9 +142,8 @@
 
   (define (process-expression expression)
     (match expression
-      [(? terminal-symbol?) expression]
-      [(? nonterminal-symbol?) expression]
-
+      [(? grammar-symbol?) expression]
+      
       [(? group-expression?)
        (define subrule-symbol (fresh-symbol!))
        (define group-symbols
@@ -215,8 +214,7 @@
 
 (define (production-expression-simplify expression)
   (match expression
-    [(? terminal-symbol?) expression]
-    [(? nonterminal-symbol?) expression]
+    [(? grammar-symbol?) expression]
 
     [(? group-expression?)
        (group-expression
@@ -283,10 +281,10 @@
     (define x.2 (nonterminal-symbol (virtual-symbol 'x 2)))
     (define x.3 (nonterminal-symbol (virtual-symbol 'x 3)))
     (define x.4 (nonterminal-symbol (virtual-symbol 'x 4)))
-    (define a (terminal-symbol 'a))
-    (define b (terminal-symbol 'b))
-    (define c (terminal-symbol 'c))
-    (define d (terminal-symbol 'd))
+    (define a (atom-symbol 'a))
+    (define b (atom-symbol 'b))
+    (define c (atom-symbol 'c))
+    (define d (atom-symbol 'd))
 
     ;; x: a, (b, c), d
     ;;

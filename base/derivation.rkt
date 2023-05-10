@@ -9,11 +9,11 @@
  (struct-out nonterminal-derivation)
  (contract-out
   [parser-derivation? predicate/c]
-  [parser-derivation-first-terminal (-> parser-derivation? any/c)]
-  [parser-derivation-last-terminal (-> parser-derivation? any/c)]
+  [parser-derivation-first-terminal (-> parser-derivation? atom?)]
+  [parser-derivation-last-terminal (-> parser-derivation? atom?)]
   [parser-derivation
    (case->
-    (-> any/c terminal-derivation?)
+    (-> atom? terminal-derivation?)
     (-> semantic-action? parser-derivation? #:rest (listof parser-derivation?)
         nonterminal-derivation?))]
   [parser-derivation->syntax (-> parser-derivation? syntax?)]
@@ -46,7 +46,8 @@
   #:constructor-name constructor:parser-derivation)
 
 
-;; Tepresents a terminal that was matched by the grammar. It contains the lexeme that was matched.
+;; Tepresents a terminal that was matched by the grammar. It contains the token or lexeme that was
+;; matched.
 (struct terminal-derivation type:parser-derivation (matched) #:transparent)
 
 
@@ -75,70 +76,74 @@
 
 (define parser-derivation
   (case-lambda
-    [(value) (terminal-derivation value)]
+    [(atom) (terminal-derivation atom)]
     [(action first-child . children) (nonterminal-derivation action (cons first-child children))]))
 
 
 (define (parser-derivation-first-terminal derivation)
   (match derivation
-    [(terminal-derivation value) value]
+    [(terminal-derivation atom) atom]
     [(nonterminal-derivation _ (vector first-child _ ...))
      (parser-derivation-first-terminal first-child)]))
 
 
 (define (parser-derivation-last-terminal derivation)
   (match derivation
-    [(terminal-derivation value) value]
+    [(terminal-derivation atom) atom]
     [(nonterminal-derivation _ (vector _ ... last-child))
      (parser-derivation-last-terminal last-child)]))
 
 
 (module+ test
-  (test-case (name-string parser-derivation-first-terminal)
+  (define one (atom 'number 1))
+  (define two (atom 'number 2))
+  (define three (atom 'number 3))
 
+  (test-case (name-string parser-derivation-first-terminal)
+    
     (test-case "terminal"
-      (check-equal? (parser-derivation-first-terminal (terminal-derivation 1)) 1))
+      (check-equal? (parser-derivation-first-terminal (parser-derivation one)) one))
 
     (test-case "nonterminal of terminals"
       (define derivation
         (parser-derivation
          (label-action 'a)
-         (parser-derivation 1)
-         (parser-derivation 2)
-         (parser-derivation 3)))
-      (check-equal? (parser-derivation-first-terminal derivation) 1))
+         (parser-derivation one)
+         (parser-derivation two)
+         (parser-derivation three)))
+      (check-equal? (parser-derivation-first-terminal derivation) one))
 
     (test-case "nonterminal of nonterminals and terminals"
       (define derivation
         (parser-derivation
          (label-action 'a)
-         (parser-derivation (label-action 'b) (parser-derivation 1))
-         (parser-derivation 2)
-         (parser-derivation 3)))
-      (check-equal? (parser-derivation-first-terminal derivation) 1)))
+         (parser-derivation (label-action 'b) (parser-derivation one))
+         (parser-derivation two)
+         (parser-derivation three)))
+      (check-equal? (parser-derivation-first-terminal derivation) one)))
 
   (test-case (name-string parser-derivation-last-terminal)
 
     (test-case "terminal"
-      (check-equal? (parser-derivation-last-terminal (terminal-derivation 1)) 1))
+      (check-equal? (parser-derivation-last-terminal (terminal-derivation one)) one))
 
     (test-case "nonterminal of terminals"
       (define derivation
         (parser-derivation
          (label-action 'a)
-         (parser-derivation 1)
-         (parser-derivation 2)
-         (parser-derivation 3)))
-      (check-equal? (parser-derivation-last-terminal derivation) 3))
+         (parser-derivation one)
+         (parser-derivation two)
+         (parser-derivation three)))
+      (check-equal? (parser-derivation-last-terminal derivation) three))
 
     (test-case "nonterminal of nonterminals and terminals"
       (define derivation
         (parser-derivation
          (label-action 'a)
-         (parser-derivation 1)
-         (parser-derivation 2)
-         (parser-derivation (label-action 'b) (parser-derivation 3))))
-      (check-equal? (parser-derivation-last-terminal derivation) 3))))
+         (parser-derivation one)
+         (parser-derivation two)
+         (parser-derivation (label-action 'b) (parser-derivation three))))
+      (check-equal? (parser-derivation-last-terminal derivation) three))))
 
 
 (define (parser-derivation->syntax derivation)
@@ -147,7 +152,7 @@
     (define first-token (parser-derivation-first-terminal derivation))
     (define last-token (parser-derivation-last-terminal derivation))
     (match derivation
-      [(terminal-derivation l) (list (atom-lexeme->syntax l))]
+      [(terminal-derivation l) (list (atom->syntax l))]
       [(nonterminal-derivation action children)
        (define children-syntaxes
          (for*/list ([child (in-vector children)]
@@ -155,8 +160,8 @@
            spliced-child))
        (semantic-action-build-syntax-splice
         action children-syntaxes
-        #:first-location (lexeme-location first-token)
-        #:last-location (lexeme-location last-token))]))
+        #:first-location (token-location first-token)
+        #:last-location (token-location last-token))]))
   
   (match (->splice derivation)
     [(list stx) stx]))
@@ -166,7 +171,7 @@
 
   (define (->splice derivation)
     (match derivation
-      [(terminal-derivation t) (list t)]
+      [(terminal-derivation t) (list (atom-datum t))]
       [(nonterminal-derivation action children)
        (define child-data
          (for*/list ([child (in-vector children)]
@@ -179,102 +184,104 @@
 
 
 (module+ test
+
+  (define (identifier name #:position [position #false] #:span [span #false])
+    (atom 'identifier name #:position position #:span span))
+  
   (test-case (name-string parser-derivation->datum)
 
     (test-case "datum terminals"
-      (define derivation (parser-derivation 'a))
+      (define derivation (parser-derivation (identifier 'a)))
       (check-equal? (parser-derivation->datum derivation) 'a))
 
     (test-case "datum labels"
       (define derivation
         (parser-derivation (label-action 'a)
-                           (parser-derivation 'b)
-                           (parser-derivation 'c)
-                           (parser-derivation 'd)))
+                           (parser-derivation (identifier 'b))
+                           (parser-derivation (identifier 'c))
+                           (parser-derivation (identifier 'd))))
       (check-equal? (parser-derivation->datum derivation) '(a b c d)))
 
     (test-case "datum cuts"
       (define derivation
         (parser-derivation (label-action 'a)
-                           (parser-derivation cut-action (parser-derivation 'b))
-                           (parser-derivation 'c)
-                           (parser-derivation cut-action (parser-derivation 'd))))
+                           (parser-derivation cut-action (parser-derivation (identifier 'b)))
+                           (parser-derivation (identifier 'c))
+                           (parser-derivation cut-action (parser-derivation (identifier 'd)))))
       (check-equal? (parser-derivation->datum derivation) '(a c)))
 
     (test-case "datum splices"
       (define derivation
         (parser-derivation (label-action 'a)
-                           (parser-derivation 'b)
+                           (parser-derivation (identifier 'b))
                            (parser-derivation splice-action
-                                              (parser-derivation 'c1)
-                                              (parser-derivation 'c2)
-                                              (parser-derivation 'c3))
-                           (parser-derivation 'd)))
+                                              (parser-derivation (identifier 'c1))
+                                              (parser-derivation (identifier 'c2))
+                                              (parser-derivation (identifier 'c3)))
+                           (parser-derivation (identifier 'd))))
       (check-equal? (parser-derivation->datum derivation) '(a b c1 c2 c3 d)))
 
     (test-case "datum pairs"
       (define derivation
-        (parser-derivation (build-pair-action) (parser-derivation 'b) (parser-derivation 'c)))
+        (parser-derivation
+         (build-pair-action) (parser-derivation (identifier 'b)) (parser-derivation (identifier 'c))))
       (check-equal? (parser-derivation->datum derivation) '(b . c)))
 
     (test-case "datum lists"
       (define derivation
         (parser-derivation (build-list-action)
-                           (parser-derivation 'b)
-                           (parser-derivation 'c)
-                           (parser-derivation 'd)))
+                           (parser-derivation (identifier 'b))
+                           (parser-derivation (identifier 'c))
+                           (parser-derivation (identifier 'd))))
       (check-equal? (parser-derivation->datum derivation) '(b c d)))
 
     (test-case "improper datum lists"
       (define derivation
         (parser-derivation (build-improper-list-action)
-                           (parser-derivation 'b)
-                           (parser-derivation 'c)
-                           (parser-derivation 'd)))
+                           (parser-derivation (identifier 'b))
+                           (parser-derivation (identifier 'c))
+                           (parser-derivation (identifier 'd))))
       (check-equal? (parser-derivation->datum derivation) '(b c . d)))
 
     (test-case "datum vectors"
       (define derivation
         (parser-derivation (build-vector-action)
-                           (parser-derivation 'b)
-                           (parser-derivation 'c)
-                           (parser-derivation 'd)))
+                           (parser-derivation (identifier 'b))
+                           (parser-derivation (identifier 'c))
+                           (parser-derivation (identifier 'd))))
       (check-equal? (parser-derivation->datum derivation) #(b c d)))
 
     (test-case "datum hashes"
       (define derivation
         (parser-derivation (build-hash-action)
-                           (parser-derivation 'a)
-                           (parser-derivation 1)
-                           (parser-derivation 'b)
-                           (parser-derivation 2)))
+                           (parser-derivation (identifier 'a))
+                           (parser-derivation one)
+                           (parser-derivation (identifier 'b))
+                           (parser-derivation two)))
       (check-equal? (parser-derivation->datum derivation) (hash 'a 1 'b 2)))
 
     (test-case "datum hashes with duplicate keys"
       (define derivation
         (parser-derivation (build-hash-action)
-                           (parser-derivation 'a)
-                           (parser-derivation 1)
-                           (parser-derivation 'a)
-                           (parser-derivation 2)))
+                           (parser-derivation (identifier 'a))
+                           (parser-derivation one)
+                           (parser-derivation (identifier 'a))
+                           (parser-derivation two)))
       (check-exn exn:fail:contract? (λ () (parser-derivation->datum derivation))))
 
     (test-case "datum boxes"
       (define derivation
-        (parser-derivation (build-box-action) (parser-derivation 'a)))
+        (parser-derivation (build-box-action) (parser-derivation (identifier 'a))))
       (check-equal? (parser-derivation->datum derivation) (box-immutable 'a)))
 
     (test-case "prefab datum structs"
       (define derivation
         (parser-derivation (build-prefab-struct-action 'point)
-                           (parser-derivation 1)
-                           (parser-derivation 2)))
+                           (parser-derivation one)
+                           (parser-derivation two)))
       (check-equal? (parser-derivation->datum derivation) #s(point 1 2))))
 
   (test-case (name-string parser-derivation->syntax)
-
-    (define (identifier name #:position position #:span span)
-      (lexeme (atom 'identifier name) (srcloc #false #false #false position span)))
 
     (test-case "syntax terminals"
       (define derivation (parser-derivation (identifier 'a #:position 1 #:span 1)))

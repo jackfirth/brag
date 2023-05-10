@@ -7,9 +7,12 @@
 (provide
  (contract-out
   [grammar-symbol? predicate/c]
-  [terminal-symbol (-> any/c terminal-symbol?)]
-  [terminal-symbol? predicate/c]
-  [terminal-symbol-value (-> terminal-symbol? any/c)]
+  [atom-symbol (-> symbol? atom-symbol?)]
+  [atom-symbol? (-> any/c boolean?)]
+  [atom-symbol-type (-> atom-symbol? symbol?)]
+  [punctuation-symbol (-> string? punctuation-symbol?)]
+  [punctuation-symbol? (-> any/c boolean?)]
+  [punctuation-symbol-string (-> punctuation-symbol? (and/c string? immutable?))]
   [nonterminal-symbol (-> any/c nonterminal-symbol?)]
   [nonterminal-symbol? predicate/c]
   [nonterminal-symbol-value (-> nonterminal-symbol? any/c)]
@@ -69,7 +72,6 @@
 (struct cut-expression production-expression (subexpression) #:transparent)
 
 (struct grammar-symbol production-expression () #:transparent)
-(struct terminal-symbol grammar-symbol (value) #:transparent)
+(struct atom-symbol grammar-symbol (type) #:transparent)
+(struct punctuation-symbol grammar-symbol (string) #:transparent)
 (struct nonterminal-symbol grammar-symbol (value) #:transparent)
-
-

@@ -39,7 +39,7 @@ corresponds to. Production expressions come in a few variants:
  A predicate for @tech{group expressions}.}
 
 @defproc[(group-expression
-          [subexpressions (sequence/c (or/c production-expression? grammar-symbol?))])
+          [subexpressions (sequence/c production-expression?)])
          group-expression?]{
  Constructs a @tech{group expression}, which is a @tech{production expression} that matches each
  expression in @racket[subexpressions] one after the other in series. Every subexpression must match
@@ -78,8 +78,9 @@ corresponds to. Production expressions come in a few variants:
  A predicate for @deftech{grammar symbols}, which are either @tech{terminal symbols} or
  @tech{nonterminal symbols}.}
 
-@defproc[(terminal-symbol [token token?]) terminal-symbol?]{
- A predicate for @tech{terminal symbols}, which match a single @tech{token} in the input stream.}
+@defproc[(punctuation-symbol [str string?]) punctuation-symbol?]
+
+@defproc[(atom-symbol [type symbol?]) atom-symbol?]
 
 @defproc[(nonterminal-symbol [value any/c]) nonterminal-symbol?]
 

@@ -19,8 +19,8 @@
          yaragg/base/derivation
          yaragg/base/grammar
          (submod yaragg/base/grammar private)
+         yaragg/base/production-expression
          yaragg/base/semantic-action
-         yaragg/base/symbol
          yaragg/base/token
          yaragg/parser
          (submod yaragg/parser private))
@@ -104,7 +104,7 @@
     (guarded-block
      (guard (complete-sppf-key? key) then
        (define tok (vector-ref tokens (complete-sppf-key-input-start key)))
-       (stream (terminal-derivation (token-value tok))))
+       (stream (terminal-derivation tok)))
      (define action (flat-production-rule-action (incomplete-sppf-key-rule key)))
      (define possible-children (possible-children-lists forest key))
      (for*/stream ([children (in-stream possible-children)]
@@ -125,14 +125,16 @@
         (define pos (earley-state-substitution-position this))
         (append (list (nonterminal-symbol-value (flat-production-rule-nonterminal rule)) '->)
                 (for/list ([sym (in-vector substitution 0 pos)])
-                  (if (terminal-symbol? sym)
-                      (terminal-symbol-value sym)
-                      (nonterminal-symbol-value sym)))
+                  (cond
+                    [(atom-symbol? sym) (atom-symbol-type sym)]
+                    [(punctuation-symbol? sym) (punctuation-symbol-string sym)]
+                    [else (nonterminal-symbol-value sym)]))
                 (list '•)
                 (for/list ([sym (in-vector substitution pos)])
-                  (if (terminal-symbol? sym)
-                      (terminal-symbol-value sym)
-                      (nonterminal-symbol-value sym)))
+                  (cond
+                    [(atom-symbol? sym) (atom-symbol-type sym)]
+                    [(punctuation-symbol? sym) (punctuation-symbol-string sym)]
+                    [else (nonterminal-symbol-value sym)]))
                 (list (earley-state-input-position this) (earley-state-key this))))))])
 
 
@@ -232,7 +234,11 @@
 
 
 (define (scanner-states states k next-token #:forest forest)
-  (define expected (terminal-symbol (token-type next-token)))
+  (define expected
+    (cond
+      [(atom? next-token) (atom-symbol (atom-type next-token))]
+      [(punctuation? next-token) (punctuation-symbol (punctuation-string next-token))]
+      [else (raise-argument-error 'scanner-states "(or/c atom? punctuation?)" next-token)]))
   (for/set ([s (in-set states)]
             #:when (not (completed-state? s))
             #:when (equal? (earley-state-next-symbol s) expected))
@@ -255,9 +261,9 @@
     (define S (nonterminal-symbol 'S))
     (define M (nonterminal-symbol 'M))
     (define T (nonterminal-symbol 'T))
-    (define + (terminal-symbol '+))
-    (define * (terminal-symbol '*))
-    (define number (terminal-symbol 'number))
+    (define + (atom-symbol 'plus))
+    (define * (atom-symbol 'times))
+    (define number (atom-symbol 'number))
     (define P-rule (production-rule #:nonterminal P #:action (label-action 'P) #:substitution S))
     (define S-rule0
       (production-rule
@@ -275,18 +281,18 @@
     (test-case "datum parser"
       (define input-tokens
         (list
-         (token 'number 2) (token '+ 'plus) (token 'number 3) (token '* 'times) (token 'number 4)))
+         (atom 'number 2) (atom 'plus '+) (atom 'number 3) (atom 'times '*) (atom 'number 4)))
       (define expected-arithmetic-parse-tree
-        '(P (S0 (S1 (M1 (T 2))) plus (M0 (M1 (T 3)) times (T 4)))))
+        '(P (S0 (S1 (M1 (T 2))) + (M0 (M1 (T 3)) * (T 4)))))
       (check-equal? (parse-datum parser input-tokens) expected-arithmetic-parse-tree))
 
     (test-case "syntax parser"
       (define input-tokens
         (list
-         (syntax-token 'number 2 #:position 1 #:span 1)
-         (syntax-token '+ #:position 2 #:span 1)
-         (syntax-token 'number 3 #:position 3 #:span 1)
-         (syntax-token '* #:position 4 #:span 1)
-         (syntax-token 'number 4 #:position 5 #:span 1)))
+         (atom 'number 2 #:position 1 #:span 1)
+         (atom 'plus '+ #:position 2 #:span 1)
+         (atom 'number 3 #:position 3 #:span 1)
+         (atom 'times '* #:position 4 #:span 1)
+         (atom 'number 4 #:position 5 #:span 1)))
       (check-equal? (syntax->datum (parse-syntax parser input-tokens))
                     '(P (S0 (S1 (M1 (T 2))) + (M0 (M1 (T 3)) * (T 4))))))))
