@@ -13,20 +13,7 @@
        #:action semantic-action?
        #:substitution (or/c production-expression? grammar-symbol?)
        production-rule?)]
-  [production-rule? predicate/c]
-  [production-expression? predicate/c]
-  [group-expression (-> (sequence/c (or/c production-expression? grammar-symbol?)) group-expression?)]
-  [group-expression? predicate/c]
-  [choice-expression
-   (-> (sequence/c (or/c production-expression? grammar-symbol?)) choice-expression?)]
-  [choice-expression? predicate/c]
-  [repetition-expression
-   (->* ((or/c production-expression? grammar-symbol?))
-        (#:min-count exact-nonnegative-integer? #:max-count (or/c exact-nonnegative-integer? +inf.0))
-        repetition-expression?)]
-  [repetition-expression? predicate/c]
-  [cut-expression (-> (or/c production-expression? grammar-symbol?) cut-expression?)]
-  [cut-expression? predicate/c]))
+  [production-rule? predicate/c]))
 
 
 (module+ private
@@ -57,8 +44,8 @@
          racket/set
          rebellion/collection/vector
          rebellion/collection/vector/builder
-         yaragg/base/semantic-action
-         yaragg/base/symbol)
+         yaragg/base/production-expression
+         yaragg/base/semantic-action)
 
 
 (module+ test
@@ -131,32 +118,6 @@
   (constructor:production-rule nonterminal action substitution))
 
 
-(struct production-expression () #:transparent)
-
-
-(struct group-expression production-expression (subexpressions)
-  #:transparent
-  #:guard (λ (subexpressions _) (sequence->vector subexpressions)))
-
-
-(struct choice-expression production-expression (choices)
-  #:guard (λ (choices _) (sequence->vector choices))
-  #:transparent)
-
-
-(struct repetition-expression production-expression (subexpression min-count max-count)
-  #:transparent
-  #:omit-define-syntaxes
-  #:constructor-name constructor:repetition-expression)
-
-
-(define (repetition-expression subexpression #:min-count [min-count 0] #:max-count [max-count +inf.0])
-  (constructor:repetition-expression subexpression min-count max-count))
-
-
-(struct cut-expression production-expression (subexpression) #:transparent)
-
-
 (struct virtual-symbol (base-symbol counter) #:transparent)
 
 
@@ -174,21 +135,20 @@
     sym)
 
   (define (process-top-level-expression expression)
-    (match expression
-      [(group-expression subexpressions)
-       (for/vector ([expression (in-vector subexpressions)])
-         (process-expression expression))]
-      [_ (list (process-expression expression))]))
+    (if (group-expression? expression)
+        (for/vector ([expression (in-vector (group-expression-subexpressions expression))])
+          (process-expression expression))
+        (list (process-expression expression))))
 
   (define (process-expression expression)
     (match expression
       [(? terminal-symbol?) expression]
       [(? nonterminal-symbol?) expression]
 
-      [(group-expression subexpressions)
+      [(? group-expression?)
        (define subrule-symbol (fresh-symbol!))
        (define group-symbols
-         (for/vector ([subexpr (in-vector subexpressions)])
+         (for/vector ([subexpr (in-vector (group-expression-subexpressions expression))])
            (process-expression subexpr)))
        (define group-rule
          (flat-production-rule
@@ -196,10 +156,10 @@
        (vector-builder-add new-rules group-rule)
        subrule-symbol]
 
-      [(choice-expression choices)
+      [(? choice-expression?)
        (define subrule-symbol (fresh-symbol!))
        (define choice-symbol-vectors
-         (for/list ([choice (in-vector choices)])
+         (for/list ([choice (in-vector (choice-expression-choices expression))])
            (process-top-level-expression choice)))
 
        ;; We reverse the order the choice symbols are added to ensure the final vector of added rules
@@ -229,9 +189,10 @@
        (vector-builder-add new-rules repetition-rule empty-rule)
        subrule-symbol]
 
-      [(cut-expression subexpression)
+      [(? cut-expression?)
        (define subrule-symbol (fresh-symbol!))
-       (define subexpr-symbols (process-top-level-expression subexpression))
+       (define subexpr-symbols
+         (process-top-level-expression (cut-expression-subexpression expression)))
 
        (define choice-rule
          (flat-production-rule
@@ -257,14 +218,14 @@
     [(? terminal-symbol?) expression]
     [(? nonterminal-symbol?) expression]
 
-    [(group-expression subexpressions)
+    [(? group-expression?)
        (group-expression
-        (for/vector ([subexpr (in-vector subexpressions)])
+        (for/vector ([subexpr (in-vector (group-expression-subexpressions expression))])
           (production-expression-simplify subexpr)))]
 
-    [(choice-expression choices)
+    [(? choice-expression?)
      (choice-expression
-      (for/vector ([subexpr (in-vector choices)])
+      (for/vector ([subexpr (in-vector (choice-expression-choices expression))])
         (production-expression-simplify subexpr)))]
 
     [(? repetition-expression?)
@@ -293,7 +254,8 @@
             (choice-expression (list (group-expression '()) (group-expression (list subexpr expr))))))
         (group-expression (sequence-append (make-list min subexpr) (list tail-expr)))])]
 
-    [(cut-expression subexpr) (cut-expression (production-expression-simplify subexpr))]))
+    [(? cut-expression?)
+     (cut-expression (production-expression-simplify (cut-expression-subexpression expression)))]))
 
 
 (define (vector-reverse vec)

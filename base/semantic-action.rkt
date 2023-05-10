@@ -9,7 +9,7 @@
   [semantic-action? predicate/c]
   [semantic-action-build-datum-splice (-> semantic-action? list? list?)]
   [semantic-action-build-syntax-splice
-   (-> semantic-action? (listof syntax?) #:first-token syntax-token? #:last-token syntax-token?
+   (-> semantic-action? (listof syntax?) #:first-location srcloc? #:last-location srcloc?
        (listof syntax?))]
   [cut-action cut-action?]
   [cut-action? predicate/c]
@@ -185,53 +185,53 @@
 
 
 (define (semantic-action-build-syntax-splice action children
-                                             #:first-token first-token
-                                             #:last-token last-token)
+                                             #:first-location first-location
+                                             #:last-location last-location)
   (match action
     [(== cut-action) '()]
     [(== splice-action) children]
 
     [(? label-action?)
      (define label-location
-       (srcloc (syntax-token-source first-token)
-               (syntax-token-line first-token)
-               (syntax-token-column first-token)
-               (syntax-token-position first-token)
+       (srcloc (srcloc-source first-location)
+               (srcloc-line first-location)
+               (srcloc-column first-location)
+               (srcloc-position first-location)
                0))
      (define label-stx
        (syntax-add-properties
         (datum->syntax #false (label-action-value action) label-location #false)
         (label-action-properties action)))
-     (define expression-location (srcloc-spanning-tokens first-token last-token))
+     (define expression-location (srcloc-spanning first-location last-location))
      (define expression-stx
        (datum->syntax #false (cons label-stx children) expression-location #false))
      (list (syntax-add-properties expression-stx (label-action-expression-properties action)))]
 
     [(? build-pair-action?)
-     (define location (srcloc-spanning-tokens first-token last-token))
+     (define location (srcloc-spanning first-location last-location))
      (define properties (build-pair-action-properties action))
      (define stx (datum->syntax #false (cons (first children) (second children)) location #false))
      (list (syntax-add-properties stx properties))]
 
     [(? build-list-action?)
-     (define location (srcloc-spanning-tokens first-token last-token))
+     (define location (srcloc-spanning first-location last-location))
      (define properties (build-list-action-properties action))
      (list (syntax-add-properties (datum->syntax #false children location #false) properties))]
 
     [(? build-improper-list-action?)
-     (define location (srcloc-spanning-tokens first-token last-token))
+     (define location (srcloc-spanning first-location last-location))
      (define properties (build-improper-list-action-properties action))
      (define stx (datum->syntax #false (list->improper-list children) location #false))
      (list (syntax-add-properties stx properties))]
 
     [(? build-vector-action?)
-     (define location (srcloc-spanning-tokens first-token last-token))
+     (define location (srcloc-spanning first-location last-location))
      (define properties (build-vector-action-properties action))
      (define stx (datum->syntax #false (list->vector children) location #false))
      (list (syntax-add-properties stx properties))]
 
     [(? build-hash-action?)
-     (define location (srcloc-spanning-tokens first-token last-token))
+     (define location (srcloc-spanning first-location last-location))
      (define hash-maker
        (case (build-hash-action-kind action)
          [(equal) make-immutable-hash]
@@ -249,13 +249,13 @@
      (list (syntax-add-properties stx (build-hash-action-properties action)))]
 
     [(? build-box-action?)
-     (define location (srcloc-spanning-tokens first-token last-token))
+     (define location (srcloc-spanning first-location last-location))
      (define properties (build-box-action-properties action))
      (define stx (datum->syntax #false (box-immutable (first children)) location #false))
      (list (syntax-add-properties stx properties))]
 
     [(? build-prefab-struct-action?)
-     (define location (srcloc-spanning-tokens first-token last-token))
+     (define location (srcloc-spanning first-location last-location))
      (define key (build-prefab-struct-action-key action))
      (define properties (build-prefab-struct-action-properties action))
      (define stx (datum->syntax #false (apply make-prefab-struct key children) location #false))
@@ -266,12 +266,16 @@
   (apply list* list))
 
 
-(define (srcloc-spanning-tokens first-token last-token)
-  (srcloc (syntax-token-source first-token)
-          (syntax-token-line first-token)
-          (syntax-token-column first-token)
-          (syntax-token-position first-token)
-          (- (syntax-token-end-position last-token) (syntax-token-position first-token))))
+(define (srcloc-spanning first-location last-location)
+  (srcloc (srcloc-source first-location)
+          (srcloc-line first-location)
+          (srcloc-column first-location)
+          (srcloc-position first-location)
+          (- (srcloc-end-position last-location) (srcloc-position first-location))))
+
+
+(define (srcloc-end-position location)
+  (+ (srcloc-position location) (srcloc-span location)))
 
 
 (define (syntax-add-properties stx properties)
