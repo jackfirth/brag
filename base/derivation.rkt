@@ -9,11 +9,9 @@
  (struct-out nonterminal-derivation)
  (contract-out
   [parser-derivation? predicate/c]
-  [parser-derivation-first-terminal (-> parser-derivation? atom?)]
-  [parser-derivation-last-terminal (-> parser-derivation? atom?)]
   [parser-derivation
    (case->
-    (-> atom? terminal-derivation?)
+    (-> token? terminal-derivation?)
     (-> semantic-action? parser-derivation? #:rest (listof parser-derivation?)
         nonterminal-derivation?))]
   [parser-derivation->syntax (-> parser-derivation? syntax?)]
@@ -80,18 +78,18 @@
     [(action first-child . children) (nonterminal-derivation action (cons first-child children))]))
 
 
-(define (parser-derivation-first-terminal derivation)
+(define (parser-derivation-first-token derivation)
   (match derivation
     [(terminal-derivation atom) atom]
     [(nonterminal-derivation _ (vector first-child _ ...))
-     (parser-derivation-first-terminal first-child)]))
+     (parser-derivation-first-token first-child)]))
 
 
-(define (parser-derivation-last-terminal derivation)
+(define (parser-derivation-last-token derivation)
   (match derivation
     [(terminal-derivation atom) atom]
     [(nonterminal-derivation _ (vector _ ... last-child))
-     (parser-derivation-last-terminal last-child)]))
+     (parser-derivation-last-token last-child)]))
 
 
 (module+ test
@@ -99,10 +97,10 @@
   (define two (atom 'number 2))
   (define three (atom 'number 3))
 
-  (test-case (name-string parser-derivation-first-terminal)
+  (test-case (name-string parser-derivation-first-token)
     
     (test-case "terminal"
-      (check-equal? (parser-derivation-first-terminal (parser-derivation one)) one))
+      (check-equal? (parser-derivation-first-token (parser-derivation one)) one))
 
     (test-case "nonterminal of terminals"
       (define derivation
@@ -111,7 +109,7 @@
          (parser-derivation one)
          (parser-derivation two)
          (parser-derivation three)))
-      (check-equal? (parser-derivation-first-terminal derivation) one))
+      (check-equal? (parser-derivation-first-token derivation) one))
 
     (test-case "nonterminal of nonterminals and terminals"
       (define derivation
@@ -120,12 +118,12 @@
          (parser-derivation (label-action 'b) (parser-derivation one))
          (parser-derivation two)
          (parser-derivation three)))
-      (check-equal? (parser-derivation-first-terminal derivation) one)))
+      (check-equal? (parser-derivation-first-token derivation) one)))
 
-  (test-case (name-string parser-derivation-last-terminal)
+  (test-case (name-string parser-derivation-last-token)
 
     (test-case "terminal"
-      (check-equal? (parser-derivation-last-terminal (terminal-derivation one)) one))
+      (check-equal? (parser-derivation-last-token (terminal-derivation one)) one))
 
     (test-case "nonterminal of terminals"
       (define derivation
@@ -134,7 +132,7 @@
          (parser-derivation one)
          (parser-derivation two)
          (parser-derivation three)))
-      (check-equal? (parser-derivation-last-terminal derivation) three))
+      (check-equal? (parser-derivation-last-token derivation) three))
 
     (test-case "nonterminal of nonterminals and terminals"
       (define derivation
@@ -143,16 +141,17 @@
          (parser-derivation one)
          (parser-derivation two)
          (parser-derivation (label-action 'b) (parser-derivation three))))
-      (check-equal? (parser-derivation-last-terminal derivation) three))))
+      (check-equal? (parser-derivation-last-token derivation) three))))
 
 
 (define (parser-derivation->syntax derivation)
   
   (define (->splice derivation)
-    (define first-token (parser-derivation-first-terminal derivation))
-    (define last-token (parser-derivation-last-terminal derivation))
+    (define first-token (parser-derivation-first-token derivation))
+    (define last-token (parser-derivation-last-token derivation))
     (match derivation
-      [(terminal-derivation l) (list (atom->syntax l))]
+      [(terminal-derivation (? atom? a)) (list (atom->syntax a))]
+      [(terminal-derivation _) (list)]
       [(nonterminal-derivation action children)
        (define children-syntaxes
          (for*/list ([child (in-vector children)]
@@ -171,7 +170,8 @@
 
   (define (->splice derivation)
     (match derivation
-      [(terminal-derivation t) (list (atom-datum t))]
+      [(terminal-derivation (? atom? a)) (list (atom-datum a))]
+      [(terminal-derivation _) (list)]
       [(nonterminal-derivation action children)
        (define child-data
          (for*/list ([child (in-vector children)]

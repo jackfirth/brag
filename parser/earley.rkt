@@ -104,7 +104,7 @@
     (guarded-block
      (guard (complete-sppf-key? key) then
        (define tok (vector-ref tokens (complete-sppf-key-input-start key)))
-       (stream (terminal-derivation tok)))
+       (stream (parser-derivation tok)))
      (define action (flat-production-rule-action (incomplete-sppf-key-rule key)))
      (define possible-children (possible-children-lists forest key))
      (for*/stream ([children (in-stream possible-children)]
@@ -261,38 +261,39 @@
     (define S (nonterminal-symbol 'S))
     (define M (nonterminal-symbol 'M))
     (define T (nonterminal-symbol 'T))
-    (define + (atom-symbol 'plus))
-    (define * (atom-symbol 'times))
     (define number (atom-symbol 'number))
-    (define P-rule (production-rule #:nonterminal P #:action (label-action 'P) #:substitution S))
-    (define S-rule0
-      (production-rule
-       #:nonterminal S #:action (label-action 'S0) #:substitution (group-expression (list S + M))))
-    (define S-rule1 (production-rule #:nonterminal S #:action (label-action 'S1) #:substitution M))
-    (define M-rule0
-      (production-rule
-       #:nonterminal M #:action (label-action 'M0) #:substitution (group-expression (list M * T))))
-    (define M-rule1 (production-rule #:nonterminal M #:action (label-action 'M1) #:substitution T))
-    (define T-rule (production-rule #:nonterminal T #:action (label-action 'T) #:substitution number))
+    (define + (punctuation-symbol "+"))
+    (define * (punctuation-symbol "*"))
     (define arithmetic-grammar
-      (grammar #:rules (list P-rule S-rule0 S-rule1 M-rule0 M-rule1 T-rule) #:start-symbol P))
+      (grammar
+       #:rules
+       (list
+        (production-rule #:nonterminal P #:action (label-action 'P) #:substitution S)
+        (production-rule #:nonterminal S #:action (label-action 'S0)
+                         #:substitution (group-expression (list S + M)))
+        (production-rule #:nonterminal S #:action (label-action 'S1) #:substitution M)
+        (production-rule #:nonterminal M #:action (label-action 'M0)
+                         #:substitution (group-expression (list M * T)))
+        (production-rule #:nonterminal M #:action (label-action 'M1) #:substitution T)
+        (production-rule #:nonterminal T #:action (label-action 'T) #:substitution number))
+       #:start-symbol P))
     (define parser (earley-parser arithmetic-grammar))
 
     (test-case "datum parser"
       (define input-tokens
         (list
-         (atom 'number 2) (atom 'plus '+) (atom 'number 3) (atom 'times '*) (atom 'number 4)))
+         (atom 'number 2) (punctuation "+") (atom 'number 3) (punctuation "*") (atom 'number 4)))
       (define expected-arithmetic-parse-tree
-        '(P (S0 (S1 (M1 (T 2))) + (M0 (M1 (T 3)) * (T 4)))))
+        '(P (S0 (S1 (M1 (T 2))) (M0 (M1 (T 3)) (T 4)))))
       (check-equal? (parse-datum parser input-tokens) expected-arithmetic-parse-tree))
 
     (test-case "syntax parser"
       (define input-tokens
         (list
          (atom 'number 2 #:position 1 #:span 1)
-         (atom 'plus '+ #:position 2 #:span 1)
+         (punctuation "+" #:position 2 #:span 1)
          (atom 'number 3 #:position 3 #:span 1)
-         (atom 'times '* #:position 4 #:span 1)
+         (punctuation "*" #:position 4 #:span 1)
          (atom 'number 4 #:position 5 #:span 1)))
       (check-equal? (syntax->datum (parse-syntax parser input-tokens))
-                    '(P (S0 (S1 (M1 (T 2))) + (M0 (M1 (T 3)) * (T 4))))))))
+                    '(P (S0 (S1 (M1 (T 2))) (M0 (M1 (T 3)) (T 4))))))))
