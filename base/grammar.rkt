@@ -118,7 +118,7 @@
   (constructor:production-rule nonterminal action substitution))
 
 
-(struct virtual-symbol (base-symbol counter) #:transparent)
+(struct virtual-key (base-key counter) #:transparent)
 
 
 (define (production-rule-flatten rule)
@@ -130,7 +130,7 @@
 
   (define (fresh-symbol!)
     (define sym
-      (nonterminal-symbol (virtual-symbol (nonterminal-symbol-value original-nonterminal) counter)))
+      (nonterminal-symbol (virtual-key (nonterminal-symbol-key original-nonterminal) counter)))
     (set! counter (add1 counter))
     sym)
 
@@ -276,11 +276,11 @@
   (test-case (name-string production-rule-flatten)
 
     (define x (nonterminal-symbol 'x))
-    (define x.0 (nonterminal-symbol (virtual-symbol 'x 0)))
-    (define x.1 (nonterminal-symbol (virtual-symbol 'x 1)))
-    (define x.2 (nonterminal-symbol (virtual-symbol 'x 2)))
-    (define x.3 (nonterminal-symbol (virtual-symbol 'x 3)))
-    (define x.4 (nonterminal-symbol (virtual-symbol 'x 4)))
+    (define x.0 (nonterminal-symbol (virtual-key 'x 0)))
+    (define x.1 (nonterminal-symbol (virtual-key 'x 1)))
+    (define x.2 (nonterminal-symbol (virtual-key 'x 2)))
+    (define x.3 (nonterminal-symbol (virtual-key 'x 3)))
+    (define x.4 (nonterminal-symbol (virtual-key 'x 4)))
     (define a (atom-symbol 'a))
     (define b (atom-symbol 'b))
     (define c (atom-symbol 'c))

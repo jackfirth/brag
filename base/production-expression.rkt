@@ -15,7 +15,7 @@
   [punctuation-symbol-string (-> punctuation-symbol? (and/c string? immutable?))]
   [nonterminal-symbol (-> any/c nonterminal-symbol?)]
   [nonterminal-symbol? predicate/c]
-  [nonterminal-symbol-value (-> nonterminal-symbol? any/c)]
+  [nonterminal-symbol-key (-> nonterminal-symbol? any/c)]
   [production-expression? predicate/c]
   [group-expression (-> (sequence/c production-expression?) group-expression?)]
   [group-expression? predicate/c]
@@ -74,4 +74,4 @@
 (struct grammar-symbol production-expression () #:transparent)
 (struct atom-symbol grammar-symbol (type) #:transparent)
 (struct punctuation-symbol grammar-symbol (string) #:transparent)
-(struct nonterminal-symbol grammar-symbol (value) #:transparent)
+(struct nonterminal-symbol grammar-symbol (key) #:transparent)

@@ -123,18 +123,18 @@
         (define rule (earley-state-rule this))
         (define substitution (flat-production-rule-substitution rule))
         (define pos (earley-state-substitution-position this))
-        (append (list (nonterminal-symbol-value (flat-production-rule-nonterminal rule)) '->)
+        (append (list (nonterminal-symbol-key (flat-production-rule-nonterminal rule)) '->)
                 (for/list ([sym (in-vector substitution 0 pos)])
                   (cond
                     [(atom-symbol? sym) (atom-symbol-type sym)]
                     [(punctuation-symbol? sym) (punctuation-symbol-string sym)]
-                    [else (nonterminal-symbol-value sym)]))
+                    [else (nonterminal-symbol-key sym)]))
                 (list '•)
                 (for/list ([sym (in-vector substitution pos)])
                   (cond
                     [(atom-symbol? sym) (atom-symbol-type sym)]
                     [(punctuation-symbol? sym) (punctuation-symbol-string sym)]
-                    [else (nonterminal-symbol-value sym)]))
+                    [else (nonterminal-symbol-key sym)]))
                 (list (earley-state-input-position this) (earley-state-key this))))))])
 
 
