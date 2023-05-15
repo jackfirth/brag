@@ -21,7 +21,9 @@
 
 
 (struct lexer (branches delimiter-pairs)
-  #:guard (λ (branches _) (sequence->vector branches))
+  #:guard
+  (λ (branches delimiter-pairs _)
+    (values (sequence->vector branches) (sequence->vector delimiter-pairs)))
   #:constructor-name constructor:lexer
   #:omit-define-syntaxes)
 
@@ -31,7 +33,8 @@
 
 
 (define-syntax-parse-rule (lexer [tag:id pattern:expr body:expr ...+] ...)
-  (constructor:lexer (vector-immutable (lexer-action 'tag  pattern (lexer-handler body ...)) ...)))
+  (constructor:lexer
+   (vector-immutable (lexer-action 'tag  '() #false pattern (lexer-handler body ...)) ...) '()))
 
 
 (define-syntax-parse-rule (lexer-handler body ...)
@@ -64,7 +67,7 @@
      (for/first ([action (in-vector (lexer-branches lexer))]
                  [i (in-naturals)]
                  #:when (hash-has-key? groups (lexer-pattern-key i)))
-       (token (lexer-action-tag action) ((lexer-action-handler action) (substring str start end))))]))
+       (atom (lexer-action-tag action) ((lexer-action-handler action) (substring str start end))))]))
 
 
 (define (lexer-append . lexers)
@@ -103,28 +106,28 @@
 
 (module+ test
   (test-case (name-string number-lexer)
-    (check-equal? (lex-string number-lexer "5") (token 'NUMBER 5))
-    (check-equal? (lex-string number-lexer "42") (token 'NUMBER 42))
-    (check-equal? (lex-string number-lexer "+5") (token 'NUMBER 5))
-    (check-equal? (lex-string number-lexer "-5") (token 'NUMBER -5))
-    (check-equal? (lex-string number-lexer "5.2") (token 'NUMBER 5.2))
-    (check-equal? (lex-string number-lexer "5.0") (token 'NUMBER 5.0))
-    (check-equal? (lex-string number-lexer "5.") (token 'NUMBER 5.0))
-    (check-equal? (lex-string number-lexer ".2") (token 'NUMBER 0.2))
-    (check-equal? (lex-string number-lexer "5.12345") (token 'NUMBER 5.12345))
-    (check-equal? (lex-string number-lexer ".12345") (token 'NUMBER 0.12345))
-    (check-equal? (lex-string number-lexer "9876.12345") (token 'NUMBER 9876.12345))
-    (check-equal? (lex-string number-lexer "+5.2") (token 'NUMBER 5.2))
-    (check-equal? (lex-string number-lexer "+5.0") (token 'NUMBER 5.0))
-    (check-equal? (lex-string number-lexer "+5.") (token 'NUMBER 5.0))
-    (check-equal? (lex-string number-lexer "+.2") (token 'NUMBER 0.2))
-    (check-equal? (lex-string number-lexer "+5.12345") (token 'NUMBER 5.12345))
-    (check-equal? (lex-string number-lexer "+.12345") (token 'NUMBER 0.12345))
-    (check-equal? (lex-string number-lexer "+9876.12345") (token 'NUMBER 9876.12345))
-    (check-equal? (lex-string number-lexer "-5.2") (token 'NUMBER -5.2))
-    (check-equal? (lex-string number-lexer "-5.0") (token 'NUMBER -5.0))
-    (check-equal? (lex-string number-lexer "-5.") (token 'NUMBER -5.0))
-    (check-equal? (lex-string number-lexer "-.2") (token 'NUMBER -0.2))
-    (check-equal? (lex-string number-lexer "-5.12345") (token 'NUMBER -5.12345))
-    (check-equal? (lex-string number-lexer "-.12345") (token 'NUMBER -0.12345))
-    (check-equal? (lex-string number-lexer "-9876.12345") (token 'NUMBER -9876.12345))))
+    (check-equal? (lex-string number-lexer "5") (atom 'NUMBER 5))
+    (check-equal? (lex-string number-lexer "42") (atom 'NUMBER 42))
+    (check-equal? (lex-string number-lexer "+5") (atom 'NUMBER 5))
+    (check-equal? (lex-string number-lexer "-5") (atom 'NUMBER -5))
+    (check-equal? (lex-string number-lexer "5.2") (atom 'NUMBER 5.2))
+    (check-equal? (lex-string number-lexer "5.0") (atom 'NUMBER 5.0))
+    (check-equal? (lex-string number-lexer "5.") (atom 'NUMBER 5.0))
+    (check-equal? (lex-string number-lexer ".2") (atom 'NUMBER 0.2))
+    (check-equal? (lex-string number-lexer "5.12345") (atom 'NUMBER 5.12345))
+    (check-equal? (lex-string number-lexer ".12345") (atom 'NUMBER 0.12345))
+    (check-equal? (lex-string number-lexer "9876.12345") (atom 'NUMBER 9876.12345))
+    (check-equal? (lex-string number-lexer "+5.2") (atom 'NUMBER 5.2))
+    (check-equal? (lex-string number-lexer "+5.0") (atom 'NUMBER 5.0))
+    (check-equal? (lex-string number-lexer "+5.") (atom 'NUMBER 5.0))
+    (check-equal? (lex-string number-lexer "+.2") (atom 'NUMBER 0.2))
+    (check-equal? (lex-string number-lexer "+5.12345") (atom 'NUMBER 5.12345))
+    (check-equal? (lex-string number-lexer "+.12345") (atom 'NUMBER 0.12345))
+    (check-equal? (lex-string number-lexer "+9876.12345") (atom 'NUMBER 9876.12345))
+    (check-equal? (lex-string number-lexer "-5.2") (atom 'NUMBER -5.2))
+    (check-equal? (lex-string number-lexer "-5.0") (atom 'NUMBER -5.0))
+    (check-equal? (lex-string number-lexer "-5.") (atom 'NUMBER -5.0))
+    (check-equal? (lex-string number-lexer "-.2") (atom 'NUMBER -0.2))
+    (check-equal? (lex-string number-lexer "-5.12345") (atom 'NUMBER -5.12345))
+    (check-equal? (lex-string number-lexer "-.12345") (atom 'NUMBER -0.12345))
+    (check-equal? (lex-string number-lexer "-9876.12345") (atom 'NUMBER -9876.12345))))
