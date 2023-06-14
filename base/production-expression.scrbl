@@ -76,8 +76,14 @@ corresponds to. Production expressions come in a few variants:
  A predicate for @deftech{grammar symbols}, which are either @tech{terminal symbols} or
  @tech{nonterminal symbols}.}
 
+@defproc[(atom-symbol? [v any/c]) boolean?]
+
 @defproc[(atom-symbol [type symbol?]) atom-symbol?]
 
+@defproc[(punctuation-symbol? [v any/c]) boolean?]
+
 @defproc[(punctuation-symbol [str string?]) punctuation-symbol?]
+
+@defproc[(nonterminal-symbol? [v any/c]) boolean?]
 
 @defproc[(nonterminal-symbol [key any/c]) nonterminal-symbol?]

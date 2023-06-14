@@ -2,7 +2,9 @@
 
 @(require (for-label racket/base
                      racket/contract
-                     yaragg/base/grammar))
+                     yaragg/base/grammar
+                     yaragg/base/production-expression
+                     yaragg/base/semantic-action))
 
 @title{Grammars}
 @defmodule[yaragg/base/grammar]
@@ -38,7 +40,7 @@ rewrite pattern is represented by a @tech{production expression}.
 
 @defproc[(production-rule
           [#:nonterminal nonterminal nonterminal-symbol?]
-          [#:substitution substitution (or/c production-expression? grammar-symbol?)]
+          [#:substitution substitution production-expression?]
           [#:action action semantic-action?])
          production-rule?]{
  Constructs a @tech{production rule} that rewrites @racket[nonterminal] into @racket[substitution].

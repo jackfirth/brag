@@ -16,9 +16,9 @@
   [splice-action splice-action?]
   [splice-action? predicate/c]
   [label-action? predicate/c]
-  [label-action (->* (any/c) (#:properties hash? #:expression-properties hash?) label-action?)]
-  [label-action-value (-> label-action? any/c)]
-  [label-action-properties (-> label-action? hash?)]
+  [label-action (->* (any/c) (#:label-properties hash? #:expression-properties hash?) label-action?)]
+  [label-action-label (-> label-action? any/c)]
+  [label-action-label-properties (-> label-action? hash?)]
   [label-action-expression-properties (-> label-action? hash?)]
   [build-pair-action (->* () (#:properties hash?) build-pair-action?)]
   [build-pair-action? predicate/c]
@@ -68,7 +68,7 @@
 (define splice-action (constructor:splice-action))
 
 
-(struct label-action (value expression-properties properties)
+(struct label-action (label label-properties expression-properties)
   #:transparent
   #:constructor-name constructor:label-action
   #:omit-define-syntaxes
@@ -78,10 +78,10 @@
                   (hash/c any/c any/c #:immutable #true #:flat? #true)))
 
 
-(define (label-action value
-                      #:properties [properties (hash)]
+(define (label-action label
+                      #:label-properties [label-properties (hash)]
                       #:expression-properties [expression-properties (hash)])
-  (constructor:label-action value properties expression-properties))
+  (constructor:label-action label label-properties expression-properties))
 
 
 (struct build-pair-action (properties)
@@ -158,7 +158,7 @@
   (match action
     [(== cut-action) '()]
     [(== splice-action) children]
-    [(? label-action?) (list (cons (label-action-value action) children))]
+    [(? label-action?) (list (cons (label-action-label action) children))]
     [(? build-pair-action?) (list (cons (first children) (second children)))]
     [(? build-list-action?) (list children)]
     [(? build-improper-list-action?) (list (list->improper-list children))]
@@ -200,8 +200,8 @@
                0))
      (define label-stx
        (syntax-add-properties
-        (datum->syntax #false (label-action-value action) label-location #false)
-        (label-action-properties action)))
+        (datum->syntax #false (label-action-label action) label-location #false)
+        (label-action-label-properties action)))
      (define expression-location (srcloc-spanning first-location last-location))
      (define expression-stx
        (datum->syntax #false (cons label-stx children) expression-location #false))
