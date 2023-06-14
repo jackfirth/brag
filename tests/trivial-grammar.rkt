@@ -51,4 +51,15 @@
         (production-rule #:nonterminal s1 #:action (label-action 'branch2) #:substitution string))))
     (define p (earley-parser g))
     (check-equal? (parse-datum p (list (atom 'number 1))) '(start (branch1 1)))
-    (check-equal? (parse-datum p (list (atom 'string "foo"))) '(start (branch2 "foo")))))
+    (check-equal? (parse-datum p (list (atom 'string "foo"))) '(start (branch2 "foo"))))
+
+  (test-case "empty grammar"
+    (define g
+      (grammar
+       #:start-symbol start
+       #:rules
+       (list
+        (production-rule
+         #:nonterminal start #:action (label-action 'start) #:substitution (group-expression '())))))
+    (define p (earley-parser g))
+    (check-equal? (parse-datum p '()) '(start))))
