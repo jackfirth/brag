@@ -5,6 +5,8 @@
 
 
 (provide
+ define-nonterminals
+ define-atoms
  (contract-out
   [grammar-symbol? predicate/c]
   [atom-symbol (-> symbol? atom-symbol?)]
@@ -40,7 +42,8 @@
 
 
 (require racket/sequence
-         rebellion/collection/vector)
+         rebellion/collection/vector
+         syntax/parse/define)
 
 
 ;@----------------------------------------------------------------------------------------------------
@@ -75,3 +78,11 @@
 (struct atom-symbol grammar-symbol (type) #:transparent)
 (struct punctuation-symbol grammar-symbol (string) #:transparent)
 (struct nonterminal-symbol grammar-symbol (key) #:transparent)
+
+
+(define-syntax-parse-rule (define-nonterminals id:id ...+)
+  (begin (define id (nonterminal-symbol 'id)) ...))
+
+
+(define-syntax-parse-rule (define-atoms id:id ...+)
+  (begin (define id (atom-symbol 'id)) ...))
