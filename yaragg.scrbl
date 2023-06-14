@@ -22,3 +22,4 @@ you want if you're looking for something more fleshed out and properly supported
 @include-section[(lib "yaragg/base/production-expression.scrbl")]
 @include-section[(lib "yaragg/base/derivation.scrbl")]
 @include-section[(lib "yaragg/base/semantic-action.scrbl")]
+@include-section[(lib "yaragg/parser.scrbl")]
