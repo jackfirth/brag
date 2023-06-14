@@ -2,6 +2,7 @@
 
 @(require (for-label racket/base
                      racket/contract
+                     racket/sequence
                      yaragg/base/grammar
                      yaragg/base/production-expression
                      yaragg/base/semantic-action))

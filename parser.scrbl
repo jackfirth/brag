@@ -4,6 +4,7 @@
 @(require (for-label racket/base
                      racket/contract
                      racket/sequence
+                     yaragg/base/token
                      yaragg/parser))
 
 
