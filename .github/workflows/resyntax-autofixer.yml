@@ -30,8 +30,20 @@ jobs:
         with:
           branch: autofix-${{ github.run_number }}-${{ github.run_attempt }}
       - name: Fix a random Racket file
-        run: xvfb-run racket -l- resyntax/cli fix --directory .
+        run: xvfb-run racket -l- resyntax/cli fix --directory . >> resyntax-output.txt
       - name: Create pull request
-        uses: peter-evans/create-pull-request@v5
+        uses: actions/github-script@v6.4.1
         with:
-          draft: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { readFile } = require('fs/promises');
+            const resyntaxOutput = await readFile('${{ github.workspace }}/resyntax-output.txt');
+            await github.rest.pulls.create({
+              owner: "${{ github.repository_owner }}",
+              repo: "${{ github.repository }}",
+              title: "Automated Resyntax fixes",
+              head: "autofix-${{ github.run_number }}-${{ github.run_attempt }}",
+              base: "master",
+              body: resyntaxOutput,
+              maintainer_can_modify: true,
+            });
