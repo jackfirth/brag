@@ -40,7 +40,7 @@ jobs:
             const resyntaxOutput = await readFile('${{ github.workspace }}/resyntax-output.txt');
             await github.rest.pulls.create({
               owner: context.repo.owner,
-              repo: context.repo.name,
+              repo: context.repo.repo,
               title: "Automated Resyntax fixes",
               head: "autofix-${{ github.run_number }}-${{ github.run_attempt }}",
               base: "master",
