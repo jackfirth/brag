@@ -30,7 +30,7 @@ jobs:
         with:
           branch: autofix-${{ github.run_number }}-${{ github.run_attempt }}
       - name: Fix a random Racket file
-        run: resyntax fix --file "$(find . -name "*.rkt" -type f | shuf -n 1)"
+        run: xvfb-run racket -l- resyntax/cli fix --file "$(find . -name "*.rkt" -type f | shuf -n 1)"
       - name: Create pull request
         uses: peter-evans/create-pull-request@v5
         with:
