@@ -30,20 +30,26 @@ jobs:
         with:
           branch: autofix-${{ github.run_number }}-${{ github.run_attempt }}
       - name: Fix a random Racket file
-        run: xvfb-run racket -l- resyntax/cli fix --directory . >> resyntax-output.txt
+        run: xvfb-run racket -l- resyntax/cli fix --directory . >> /tmp/resyntax-output.txt
       - name: Create pull request
         uses: actions/github-script@v6.4.1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const { readFile } = require('fs/promises');
-            const resyntaxOutput = await readFile('${{ github.workspace }}/resyntax-output.txt');
+            const { readFile, writeFile } = require('fs/promises');
+            const { exec } = require('@actions/exec');
+            const resyntaxOutput = await readFile('/tmp/resyntax-output.txt');
+            const commitMessageBody = "```\n" + resyntaxOutput + "\n```";
+            const commitMessageTitle = "Automated Resyntax fixes";
+            const commitMessage = commitMessageTitle + "\n\n" + commitMessageBody;
+            await writeFile('/tmp/resyntax-commit-message.txt', commitMessage);
+            await exec('git' ['commit', '--all', '--file=/tmp/resyntax-commit-message.txt']);
             await github.rest.pulls.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: "Automated Resyntax fixes",
+              title: commitMessageTitle,
               head: "autofix-${{ github.run_number }}-${{ github.run_attempt }}",
               base: "master",
-              body: "```\n" + resyntaxOutput + "\n```",
+              body: commitMessageBody,
               maintainer_can_modify: true,
             });
