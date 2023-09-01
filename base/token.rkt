@@ -6,9 +6,9 @@
 
 (provide
  (contract-out
-  [token? (-> any/c boolean?)]
+  [token? predicate/c]
   [token-location (-> token? srcloc?)]
-  [atom? (-> any/c boolean?)]
+  [atom? predicate/c]
   [atom
    (->* (symbol? any/c)
         (#:properties hash?
@@ -23,7 +23,7 @@
   [atom-datum (-> atom? any/c)]
   [atom-properties (-> atom? hash?)]
   [atom->syntax (-> atom? syntax?)]
-  [punctuation? (-> any/c boolean?)]
+  [punctuation? predicate/c]
   [punctuation
    (->* (string?)
         (#:location (or/c srcloc? #false)
@@ -34,7 +34,7 @@
          #:column (or/c exact-nonnegative-integer? #false))
         punctuation?)]
   [punctuation-string (-> punctuation? (and/c string? immutable?))]
-  [comment? (-> any/c boolean?)]
+  [comment? predicate/c]
   [comment
    (->* (string?)
         (#:location (or/c srcloc? #false)
@@ -45,7 +45,7 @@
          #:column (or/c exact-nonnegative-integer? #false))
         comment?)]
   [comment-text (-> comment? (and/c string? immutable?))]
-  [whitespace? (-> any/c boolean?)]
+  [whitespace? predicate/c]
   [whitespace
    (->* ()
         (#:linebreak-count exact-nonnegative-integer?
