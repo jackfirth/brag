@@ -39,8 +39,8 @@ jobs:
             const { readFile } = require('fs/promises');
             const resyntaxOutput = await readFile('${{ github.workspace }}/resyntax-output.txt');
             await github.rest.pulls.create({
-              owner: context.github.repo.owner,
-              repo: context.github.repo.name,
+              owner: context.repo.owner,
+              repo: context.repo.name,
               title: "Automated Resyntax fixes",
               head: "autofix-${{ github.run_number }}-${{ github.run_attempt }}",
               base: "master",
