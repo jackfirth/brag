@@ -42,7 +42,7 @@ jobs:
             const commitMessageTitle = "Automated Resyntax fixes";
             const commitMessage = commitMessageTitle + "\n\n" + commitMessageBody;
             await writeFile('/tmp/resyntax-commit-message.txt', commitMessage);
-            await exec.exec('git' ['commit', '--all', '--file=/tmp/resyntax-commit-message.txt']);
+            await exec.exec('git commit --all --file=/tmp/resyntax-commit-message.txt');
             await github.rest.pulls.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
