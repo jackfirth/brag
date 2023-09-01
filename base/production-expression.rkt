@@ -10,10 +10,10 @@
  (contract-out
   [grammar-symbol? predicate/c]
   [atom-symbol (-> symbol? atom-symbol?)]
-  [atom-symbol? (-> any/c boolean?)]
+  [atom-symbol? predicate/c]
   [atom-symbol-type (-> atom-symbol? symbol?)]
   [punctuation-symbol (-> string? punctuation-symbol?)]
-  [punctuation-symbol? (-> any/c boolean?)]
+  [punctuation-symbol? predicate/c]
   [punctuation-symbol-string (-> punctuation-symbol? (and/c string? immutable?))]
   [nonterminal-symbol (-> any/c nonterminal-symbol?)]
   [nonterminal-symbol? predicate/c]
