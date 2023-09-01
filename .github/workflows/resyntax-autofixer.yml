@@ -45,6 +45,7 @@ jobs:
             await exec.exec('git config user.name "GitHub Actions"');
             await exec.exec('git config user.email "actions@github.com"');
             await exec.exec('git commit --all --file=/tmp/resyntax-commit-message.txt');
+            await exec.exec('git push');
             await github.rest.pulls.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
