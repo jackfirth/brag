@@ -24,11 +24,7 @@ jobs:
       - name: Install local packages
         run: raco pkg install --auto
       - name: Create a new branch
-        uses: peterjgrainger/action-create-branch@v2.2.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          branch: autofix-${{ github.run_number }}-${{ github.run_attempt }}
+        run: git checkout -b autofix-${{ github.run_number }}-${{ github.run_attempt }}
       - name: Fix a random Racket file
         run: xvfb-run racket -l- resyntax/cli fix --directory . >> /tmp/resyntax-output.txt
       - name: Create pull request
