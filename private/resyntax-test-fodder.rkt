@@ -5,6 +5,6 @@
   (lambda (x)
     (println "before bar definition")
     (define (bar)
-      (+ 1 2 3))
+      (+ 1 2 3 4 5 6))
     (println "after bar definition")
     (bar)))
